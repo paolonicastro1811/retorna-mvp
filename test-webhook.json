@@ -1,0 +1,23 @@
+{
+  "entry": [
+    {
+      "changes": [
+        {
+          "value": {
+            "messages": [
+              {
+                "from": "5511999998888",
+                "text": {
+                  "body": "Oi, quero reservar!"
+                }
+              }
+            ],
+            "metadata": {
+              "display_phone_number": "+5511988880000"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

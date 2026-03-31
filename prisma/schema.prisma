@@ -1,0 +1,429 @@
+// ============================================================
+// Reactivation MVP — Schema Prisma
+// ============================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------
+// RESTAURANT — Tenant principale
+// --------------------------------------------------
+model Restaurant {
+  id                    String   @id @default(cuid())
+  name                  String
+  phone                 String?
+  plan                  String   @default("manual") // "manual" (Plan A) | "automatic" (Plan B)
+  timezone              String   @default("America/Sao_Paulo")
+  attributionWindowDays Int      @default(30) @map("attribution_window_days")
+
+  // --- Loyalty config (defaults = zero-config start) ---
+  tierFrequenteMinVisits  Int    @default(3)  @map("tier_frequente_min_visits")
+  tierPrataMinVisits      Int    @default(10) @map("tier_prata_min_visits")
+  tierOuroMinVisits       Int    @default(25) @map("tier_ouro_min_visits")
+  discountFrequente       Int    @default(5)  @map("discount_frequente")  // %
+  discountPrata           Int    @default(10) @map("discount_prata")      // %
+  discountOuro            Int    @default(15) @map("discount_ouro")       // %
+  streakTargetVisits      Int    @default(3)  @map("streak_target_visits")
+  streakWindowDays        Int    @default(7)  @map("streak_window_days")
+  reactivationAfterDays   Int    @default(30) @map("reactivation_after_days")
+  surpriseEveryMinVisits  Int    @default(3)  @map("surprise_every_min_visits")
+  surpriseEveryMaxVisits  Int    @default(7)  @map("surprise_every_max_visits")
+
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  customers            Customer[]
+  campaigns            Campaign[]
+  templates            MessageTemplate[]
+  importJobs           ImportJob[]
+  inboundMessages      InboundMessage[]
+  conversationReplies  ConversationReply[]
+  tables               RestaurantTable[]
+  hours                RestaurantHours[]
+  reservations         Reservation[]
+  automationLogs       AutomationLog[]
+
+  @@map("restaurants")
+}
+
+// --------------------------------------------------
+// RESTAURANT_TABLE — Tavoli del ristorante (Piano B)
+// --------------------------------------------------
+model RestaurantTable {
+  id           String @id @default(cuid())
+  restaurantId String @map("restaurant_id")
+  tableNumber  Int    @map("table_number")
+  seats        Int
+  isActive     Boolean @default(true) @map("is_active")
+
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([restaurantId, tableNumber])
+  @@index([restaurantId])
+  @@map("restaurant_tables")
+}
+
+// --------------------------------------------------
+// RESTAURANT_HOURS — Orari di apertura (Piano B)
+// --------------------------------------------------
+model RestaurantHours {
+  id           String @id @default(cuid())
+  restaurantId String @map("restaurant_id")
+  dayOfWeek    Int    @map("day_of_week") // 0=Domingo, 1=Segunda, ..., 6=Sabado
+  openTime     String @map("open_time")   // "11:30"
+  closeTime    String @map("close_time")  // "23:00"
+  isClosed     Boolean @default(false) @map("is_closed")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, dayOfWeek])
+  @@index([restaurantId])
+  @@map("restaurant_hours")
+}
+
+// --------------------------------------------------
+// CUSTOMER — Cliente del ristorante (phone = ID primario)
+// Primary acquisition path: WhatsApp inbound message.
+// Historical imports are legacy/secondary — imported customers
+// remain opt-in "unknown" and are NOT campaign-eligible until
+// they initiate WhatsApp contact.
+// --------------------------------------------------
+model Customer {
+  id              String    @id @default(cuid())
+  restaurantId    String    @map("restaurant_id")
+  phone           String
+  name            String?
+  lifecycleStatus String    @default("active") @map("lifecycle_status") // active | at_risk | inactive
+  totalVisits     Int       @default(0) @map("total_visits")
+  totalSpent      Float     @default(0) @map("total_spent")
+  avgTicket       Float     @default(0) @map("avg_ticket")
+  lastVisitAt     DateTime? @map("last_visit_at")
+  lastVisitAmount Float?    @map("last_visit_amount")
+  isFrequent      Boolean   @default(false) @map("is_frequent")
+  isHighSpender        Boolean   @default(false) @map("is_high_spender")
+  lastReactivatedAt    DateTime? @map("last_reactivated_at")
+  whatsappOptInStatus  String    @default("unknown") @map("whatsapp_opt_in_status") // unknown | granted | revoked
+  whatsappOptInAt      DateTime? @map("whatsapp_opt_in_at")
+  contactableStatus    String    @default("contactable") @map("contactable_status") // contactable | do_not_contact
+  acquisitionSource       String?   @map("acquisition_source") // "whatsapp_inbound" | "import" | null
+  welcomeAutoReplySentAt  DateTime? @map("welcome_auto_reply_sent_at")
+  marketingNudgeSentAt    DateTime? @map("marketing_nudge_sent_at")
+  marketingOptInAt        DateTime? @map("marketing_opt_in_at")
+
+  // --- Loyalty / Tier ---
+  tier                    String    @default("novo") // novo | frequente | prata | ouro
+  currentStreak           Int       @default(0) @map("current_streak")
+  streakUpdatedAt         DateTime? @map("streak_updated_at")
+  surpriseCounter         Int       @default(0) @map("surprise_counter") // visits since last surprise
+  nextSurpriseAt          Int       @default(5) @map("next_surprise_at") // random threshold 3-7
+  lastReactivationSentAt  DateTime? @map("last_reactivation_sent_at")
+  tierUpgradedAt          DateTime? @map("tier_upgraded_at")
+  birthday                DateTime? @db.Date
+
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  restaurant          Restaurant               @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  events              CustomerEvent[]
+  audienceItems       CampaignAudienceItem[]
+  messages            OutboundMessage[]
+  attributions        ReactivationAttribution[]
+  inboundMessages     InboundMessage[]
+  conversationReplies ConversationReply[]
+  reservations        Reservation[]
+  automationLogs      AutomationLog[]
+
+  @@unique([restaurantId, phone])
+  @@index([restaurantId])
+  @@index([restaurantId, lifecycleStatus])
+  @@index([restaurantId, isFrequent])
+  @@index([restaurantId, isHighSpender])
+  @@index([restaurantId, whatsappOptInStatus])
+  @@map("customers")
+}
+
+// --------------------------------------------------
+// CUSTOMER_EVENT — Solo tipo "visit" per MVP
+// --------------------------------------------------
+model CustomerEvent {
+  id           String   @id @default(cuid())
+  customerId   String   @map("customer_id")
+  restaurantId String   @map("restaurant_id")
+  eventType    String   @default("visit") @map("event_type") // solo "visit"
+  amount       Float?
+  occurredAt   DateTime @map("occurred_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  customer    Customer                 @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  attribution ReactivationAttribution?
+
+  @@index([customerId])
+  @@index([restaurantId, occurredAt])
+  @@map("customer_events")
+}
+
+// --------------------------------------------------
+// CAMPAIGN — Campagna di reactivation
+// --------------------------------------------------
+model Campaign {
+  id           String    @id @default(cuid())
+  restaurantId String    @map("restaurant_id")
+  name         String
+  status       String    @default("draft") // draft | building | ready | sending | completed
+  segmentRules Json      @map("segment_rules") // { lifecycle: ["inactive"], flags: ["high_spender"] }
+  templateId   String?   @map("template_id")
+  scheduledAt  DateTime? @map("scheduled_at")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  restaurant Restaurant               @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  template   MessageTemplate?         @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  audience   CampaignAudienceItem[]
+  messages   OutboundMessage[]
+
+  @@index([restaurantId])
+  @@index([restaurantId, status])
+  @@map("campaigns")
+}
+
+// --------------------------------------------------
+// CAMPAIGN_AUDIENCE_ITEM — Clienti selezionati per campagna
+// --------------------------------------------------
+model CampaignAudienceItem {
+  id         String   @id @default(cuid())
+  campaignId String   @map("campaign_id")
+  customerId String   @map("customer_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, customerId])
+  @@index([campaignId])
+  @@map("campaign_audience_items")
+}
+
+// --------------------------------------------------
+// MESSAGE_TEMPLATE — Template messaggi WhatsApp
+// --------------------------------------------------
+model MessageTemplate {
+  id           String   @id @default(cuid())
+  restaurantId String   @map("restaurant_id")
+  name             String
+  body             String   @db.Text // con {{name}} placeholders
+  hsmTemplateName  String?  @map("hsm_template_name") // Meta-approved template name (null = text-only, for previews)
+  hsmLanguage      String   @default("pt_BR") @map("hsm_language") // BCP-47 language code
+  channel          String   @default("whatsapp")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  campaigns  Campaign[]
+
+  @@index([restaurantId])
+  @@map("message_templates")
+}
+
+// --------------------------------------------------
+// OUTBOUND_MESSAGE — Messaggio inviato al cliente
+// --------------------------------------------------
+model OutboundMessage {
+  id            String    @id @default(cuid())
+  campaignId    String    @map("campaign_id")
+  customerId    String    @map("customer_id")
+  restaurantId  String    @map("restaurant_id")
+  phone           String
+  body            String    @db.Text
+  hsmTemplateName String?   @map("hsm_template_name") // Meta HSM template name for business-initiated
+  hsmLanguage     String?   @map("hsm_language")       // BCP-47 language code
+  status          String    @default("queued") // queued | sent | delivered | read | failed
+  providerMsgId String?   @unique @map("provider_msg_id")
+  sentAt        DateTime? @map("sent_at")
+  deliveredAt   DateTime? @map("delivered_at")
+  readAt        DateTime? @map("read_at")
+  failedAt      DateTime? @map("failed_at")
+  failReason    String?   @map("fail_reason")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  campaign    Campaign                 @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer    Customer                 @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  events      MessageEvent[]
+  attribution ReactivationAttribution?
+
+  @@index([campaignId])
+  @@index([customerId])
+  @@index([restaurantId, status])
+  @@index([providerMsgId])
+  @@map("outbound_messages")
+}
+
+// --------------------------------------------------
+// MESSAGE_EVENT — Tracking eventi di delivery/reply
+// --------------------------------------------------
+model MessageEvent {
+  id        String   @id @default(cuid())
+  messageId String   @map("message_id")
+  eventType String   @map("event_type") // sent | delivered | read | failed | reply
+  payload   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message OutboundMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("message_events")
+}
+
+// --------------------------------------------------
+// REACTIVATION_ATTRIBUTION — Last-touch attribution
+// --------------------------------------------------
+model ReactivationAttribution {
+  id         String   @id @default(cuid())
+  messageId  String   @unique @map("message_id")
+  customerId String   @map("customer_id")
+  visitId    String   @unique @map("visit_id")
+  revenue    Float
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  message  OutboundMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  visit    CustomerEvent   @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([messageId])
+  @@map("reactivation_attributions")
+}
+
+// --------------------------------------------------
+// INBOUND_MESSAGE — Log of inbound WhatsApp messages
+// Used for opt-in auditability and consent traceability.
+// This is the primary customer acquisition event.
+// --------------------------------------------------
+model InboundMessage {
+  id           String   @id @default(cuid())
+  restaurantId String   @map("restaurant_id")
+  customerId   String   @map("customer_id")
+  phoneE164    String   @map("phone_e164")
+  messageText  String?  @map("message_text") @db.Text
+  receivedAt   DateTime @map("received_at")
+  source       String   @default("whatsapp") // whatsapp
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([restaurantId, receivedAt])
+  @@map("inbound_messages")
+}
+
+// --------------------------------------------------
+// CONVERSATION_REPLY — Bot auto-replies (AI classifier)
+// Stored separately from OutboundMessage (which requires campaignId).
+// Used to build conversation window for intent classification.
+// --------------------------------------------------
+model ConversationReply {
+  id           String   @id @default(cuid())
+  restaurantId String   @map("restaurant_id")
+  customerId   String   @map("customer_id")
+  phoneE164    String   @map("phone_e164")
+  messageText  String   @map("message_text") @db.Text
+  intent       String?  // booking_intent, menu_intent, etc.
+  sentAt       DateTime @map("sent_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([restaurantId, sentAt])
+  @@map("conversation_replies")
+}
+
+// --------------------------------------------------
+// RESERVATION — Prenotazione tavolo (Piano B)
+// --------------------------------------------------
+model Reservation {
+  id           String    @id @default(cuid())
+  restaurantId String    @map("restaurant_id")
+  customerId   String?   @map("customer_id")
+  customerName String?   @map("customer_name")
+  phone        String
+  tableId      String?   @map("table_id")
+  date         DateTime  @db.Date
+  time         String    // "19:30"
+  endTime      String?   @map("end_time") // "21:00"
+  partySize    Int       @default(2) @map("party_size")
+  status       String    @default("pending") // pending | confirmed | seated | completed | cancelled | no_show
+  notes        String?   @db.Text
+  source       String    @default("manual") // manual | whatsapp_bot | phone
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  restaurant Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer   Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  table      RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, date])
+  @@index([restaurantId, status])
+  @@index([customerId])
+  @@map("reservations")
+}
+
+// --------------------------------------------------
+// IMPORT_JOB — Job di importazione dati (LEGACY)
+// Historical import is NOT part of the primary compliant flow.
+// Imported customers default to opt-in "unknown" and cannot
+// enter campaign audiences until they initiate WhatsApp contact.
+// --------------------------------------------------
+model ImportJob {
+  id            String   @id @default(cuid())
+  restaurantId  String   @map("restaurant_id")
+  status        String   @default("pending") // pending | processing | completed | failed
+  fileName      String?  @map("file_name")
+  totalRows     Int      @default(0) @map("total_rows")
+  processedRows Int      @default(0) @map("processed_rows")
+  errorRows     Int      @default(0) @map("error_rows")
+  errors        Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@map("import_jobs")
+}
+
+// --------------------------------------------------
+// AUTOMATION_LOG — Log of automated loyalty messages
+// Tracks every automatic message sent by the engine.
+// --------------------------------------------------
+model AutomationLog {
+  id           String   @id @default(cuid())
+  restaurantId String   @map("restaurant_id")
+  customerId   String   @map("customer_id")
+  templateKey  String   @map("template_key") // welcome_consent | post_visit_thanks | reward_earned | tier_upgrade | streak_reminder | reactivation | surprise_reward
+  status       String   @default("sent")     // sent | delivered | read | failed
+  providerMsgId String? @map("provider_msg_id")
+  metadata     Json?    // extra info: tier, discount%, visits, etc.
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, templateKey])
+  @@index([customerId])
+  @@index([restaurantId, createdAt])
+  @@map("automation_logs")
+}

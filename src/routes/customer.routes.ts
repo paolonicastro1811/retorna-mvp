@@ -1,0 +1,157 @@
+import { Router, Request, Response } from "express";
+import { customerRepository } from "../repositories/customer.repository";
+import { prisma } from "../database/client";
+import { param } from "../shared/params";
+
+const router = Router();
+
+router.get("/:restaurantId/customers", async (req: Request, res: Response) => {
+  const customers = await customerRepository.findByRestaurant(
+    param(req, "restaurantId")
+  );
+  res.json(customers);
+});
+
+router.get(
+  "/:restaurantId/customers/:customerId",
+  async (req: Request, res: Response) => {
+    const customer = await customerRepository.findById(param(req, "customerId"));
+    if (!customer) return res.status(404).json({ error: "Not found" });
+    res.json(customer);
+  }
+);
+
+/**
+ * GET /restaurants/:restaurantId/customers/:customerId/data-export
+ *
+ * LGPD Art. 18 — Right of access: returns ALL data stored about the customer.
+ */
+router.get(
+  "/:restaurantId/customers/:customerId/data-export",
+  async (req: Request, res: Response) => {
+    const customerId = param(req, "customerId");
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      include: {
+        events: true,
+        inboundMessages: true,
+        messages: true,
+        audienceItems: true,
+        attributions: true,
+      },
+    });
+    if (!customer) return res.status(404).json({ error: "Not found" });
+    res.json({
+      customer,
+      _lgpd: "Full data export per LGPD Art. 18 — direito de acesso",
+    });
+  }
+);
+
+/**
+ * PATCH /restaurants/:restaurantId/customers/:customerId/status
+ *
+ * Update customer lifecycle status (active/inactive).
+ * Used by dashboard owner to manually toggle status.
+ */
+router.patch(
+  "/:restaurantId/customers/:customerId/status",
+  async (req: Request, res: Response) => {
+    const customerId = param(req, "customerId");
+    const { lifecycleStatus } = req.body;
+    if (!lifecycleStatus || !["active", "inactive"].includes(lifecycleStatus)) {
+      return res.status(400).json({ error: "lifecycleStatus must be 'active' or 'inactive'" });
+    }
+    const customer = await customerRepository.findById(customerId);
+    if (!customer) return res.status(404).json({ error: "Not found" });
+
+    const updated = await customerRepository.updateFlags(customerId, { lifecycleStatus });
+    res.json(updated);
+  }
+);
+
+/**
+ * PATCH /restaurants/:restaurantId/customers/:customerId/last-visit-amount
+ *
+ * Manually correct the last visit amount (e.g. typo fix by restaurant owner).
+ */
+router.patch(
+  "/:restaurantId/customers/:customerId/last-visit-amount",
+  async (req: Request, res: Response) => {
+    const customerId = param(req, "customerId");
+    const { amount } = req.body;
+    if (amount == null || typeof amount !== "number" || amount < 0) {
+      return res.status(400).json({ error: "amount must be a non-negative number" });
+    }
+    const customer = await customerRepository.findById(customerId);
+    if (!customer) return res.status(404).json({ error: "Not found" });
+
+    // Update lastVisitAmount and recalculate totalSpent
+    // Find the last event and update its amount too
+    const lastEvent = await prisma.customerEvent.findFirst({
+      where: { customerId, eventType: "visit" },
+      orderBy: { occurredAt: "desc" },
+    });
+
+    if (lastEvent) {
+      const oldAmount = lastEvent.amount ?? 0;
+      const diff = amount - oldAmount;
+      await prisma.customerEvent.update({
+        where: { id: lastEvent.id },
+        data: { amount },
+      });
+      await prisma.customer.update({
+        where: { id: customerId },
+        data: {
+          lastVisitAmount: amount,
+          totalSpent: Math.max(0, customer.totalSpent + diff),
+          avgTicket: customer.totalVisits > 0
+            ? Math.round(((customer.totalSpent + diff) / customer.totalVisits) * 100) / 100
+            : 0,
+        },
+      });
+    } else {
+      await prisma.customer.update({
+        where: { id: customerId },
+        data: { lastVisitAmount: amount },
+      });
+    }
+
+    const updated = await customerRepository.findById(customerId);
+    res.json(updated);
+  }
+);
+
+/**
+ * DELETE /restaurants/:restaurantId/customers/:customerId
+ *
+ * LGPD Art. 18 — Right to deletion: permanently removes customer
+ * and ALL related data (events, messages, attributions, inbound logs).
+ * Prisma cascade handles all child records.
+ *
+ * Also available via WhatsApp keyword: APAGAR / DELETAR
+ */
+router.delete(
+  "/:restaurantId/customers/:customerId",
+  async (req: Request, res: Response) => {
+    const customerId = param(req, "customerId");
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+    });
+    if (!customer) return res.status(404).json({ error: "Not found" });
+
+    await prisma.customer.delete({ where: { id: customerId } });
+
+    console.log(
+      `[LGPD] Customer deleted: id=${customerId} phone=${customer.phone}`
+    );
+
+    res.json({
+      deleted: true,
+      customerId,
+      _lgpd: "All customer data permanently deleted per LGPD Art. 18",
+    });
+  }
+);
+
+export const customerRouter = router;
