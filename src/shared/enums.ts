@@ -50,16 +50,6 @@ export const MessageEventType = {
 export type MessageEventType =
   (typeof MessageEventType)[keyof typeof MessageEventType];
 
-// --- Import Job Status ---
-export const ImportJobStatus = {
-  PENDING: "pending",
-  PROCESSING: "processing",
-  COMPLETED: "completed",
-  FAILED: "failed",
-} as const;
-export type ImportJobStatus =
-  (typeof ImportJobStatus)[keyof typeof ImportJobStatus];
-
 // --- Channel ---
 export const Channel = {
   WHATSAPP: "whatsapp",
