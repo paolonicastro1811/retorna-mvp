@@ -5,7 +5,7 @@ import { OnboardingPage } from './pages/OnboardingPage'
 import { CustomersPage } from './pages/CustomersPage'
 import { VisitPage } from './pages/VisitPage'
 import { BookingLeadsPage } from './pages/BookingLeadsPage'
-import { CampaignsPage } from './pages/CampaignsPage'
+import { AutomacoesPage } from './pages/AutomacoesPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 export default function App() {
@@ -20,7 +20,7 @@ export default function App() {
         <Route path="/painel" element={<Layout />}>
           <Route index element={<CustomersPage />} />
           <Route path="visita" element={<VisitPage />} />
-          <Route path="campanhas" element={<CampaignsPage />} />
+          <Route path="campanhas" element={<AutomacoesPage />} />
           <Route path="leads" element={<BookingLeadsPage />} />
           <Route path="impostacoes" element={<SettingsPage />} />
         </Route>

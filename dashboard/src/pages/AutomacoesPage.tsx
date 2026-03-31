@@ -51,7 +51,7 @@ const TIER_CONFIG: Record<string, { label: string; emoji: string; color: string 
   ouro: { label: 'Ouro', emoji: '🥇', color: 'bg-yellow-200 text-yellow-800' },
 }
 
-export function CampaignsPage() {
+export function AutomacoesPage() {
   const [stats, setStats] = useState<AutomationStats | null>(null)
   const [loading, setLoading] = useState(true)
 
