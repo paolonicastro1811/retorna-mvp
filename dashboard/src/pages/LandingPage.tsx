@@ -16,15 +16,15 @@ export function LandingPage() {
     <div className="min-h-screen bg-white text-[#2d2d3a]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
 
       {/* HERO */}
-      <section className="relative min-h-[70vh] flex items-center justify-center text-center overflow-hidden">
+      <section className="relative min-h-[80vh] flex items-center justify-center text-center overflow-hidden">
         <div className="absolute inset-0 bg-[url('/images/hero.webp')] bg-center bg-cover" />
         <div className="absolute inset-0 bg-black/45" />
-        <div className="relative z-10 max-w-[900px] mx-auto px-6 py-14">
+        <div className="relative z-10 max-w-[1000px] mx-auto px-8 py-16">
           <p className="text-sm font-bold tracking-widest uppercase text-white/80 mb-4">Para restaurantes</p>
-          <h1 className="text-[clamp(2.2rem,5.5vw,3.2rem)] font-extrabold leading-tight text-white mb-5 [text-shadow:0_2px_8px_rgba(0,0,0,0.4)]">
+          <h1 className="text-[clamp(2.4rem,5.5vw,3.6rem)] font-extrabold leading-tight text-white mb-6 [text-shadow:0_2px_8px_rgba(0,0,0,0.4)]">
             Seus clientes ja existem.<br /><span className="text-[#25D366]">Eles so pararam de voltar.</span>
           </h1>
-          <p className="text-xl text-white/90 max-w-[600px] mx-auto mb-10 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]">
+          <p className="text-xl text-white/90 max-w-[650px] mx-auto mb-10 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]">
             Recupere clientes inativos via WhatsApp e veja exatamente quanto faturamento eles geram quando voltam.
           </p>
           <button
@@ -39,15 +39,15 @@ export function LandingPage() {
       </section>
 
       {/* PROBLEMA */}
-      <section className="py-10 bg-[#f8f9fb]">
-        <div className="max-w-[1100px] mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-[5fr_6fr] gap-8 items-center">
+      <section className="py-14 bg-[#f8f9fb]">
+        <div className="max-w-[1320px] mx-auto px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
               <p className="text-sm font-bold tracking-widest uppercase text-[#0f9d58] mb-3">O problema</p>
-              <h2 className="text-[1.8rem] font-extrabold leading-tight text-[#1a1a2e] mb-6">
+              <h2 className="text-[2rem] font-extrabold leading-tight text-[#1a1a2e] mb-6">
                 Voce esta perdendo faturamento<br />todos os dias — sem perceber
               </h2>
-              <ul className="space-y-3.5">
+              <ul className="space-y-4">
                 {[
                   'Voce ja investiu para conquistar esses clientes',
                   'Muitos vieram uma ou duas vezes e nunca mais voltaram',
@@ -55,28 +55,28 @@ export function LandingPage() {
                   'Cada cliente inativo e dinheiro que voce deixa na mesa',
                   'Voce nao tem como saber quanto esta perdendo',
                 ].map((t, i) => (
-                  <li key={i} className="flex items-start gap-2.5">
-                    <span className="text-red-500 font-extrabold text-xl leading-6">×</span>
-                    <span className="text-[1.1rem]">{t}</span>
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="text-red-500 font-extrabold text-2xl leading-7">×</span>
+                    <span className="text-lg">{t}</span>
                   </li>
                 ))}
               </ul>
             </div>
             <div>
-              <img src="/images/empty.webp" alt="Restaurante vazio" className="w-full rounded-xl shadow-lg object-cover" loading="lazy" />
+              <img src="/images/empty.webp" alt="Restaurante vazio" className="w-full rounded-xl shadow-lg object-cover aspect-[4/3]" loading="lazy" />
             </div>
           </div>
         </div>
       </section>
 
       {/* SOLUCAO */}
-      <section className="py-10">
-        <div className="max-w-[1100px] mx-auto px-6">
+      <section className="py-14">
+        <div className="max-w-[1320px] mx-auto px-8">
           <p className="text-sm font-bold tracking-widest uppercase text-[#0f9d58] mb-3">A solucao</p>
-          <h2 className="text-[1.8rem] font-extrabold leading-tight text-[#1a1a2e] mb-6">
+          <h2 className="text-[2rem] font-extrabold leading-tight text-[#1a1a2e] mb-8">
             Um sistema simples que traz<br />seus clientes de volta
           </h2>
-          <div className="space-y-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
             {[
               'Conecte o WhatsApp do restaurante em poucos minutos',
               'O sistema detecta automaticamente quem parou de frequentar',
@@ -84,7 +84,7 @@ export function LandingPage() {
               'Quando o cliente volta, voce ve exatamente quanto ele gastou',
               'Acompanhe o ROI de cada campanha em tempo real — em reais',
             ].map((t, i) => (
-              <div key={i} className="flex items-start gap-3.5 text-[1.1rem]">
+              <div key={i} className="flex items-start gap-4 text-lg">
                 <CheckIcon />
                 <span>{t}</span>
               </div>
@@ -94,20 +94,20 @@ export function LandingPage() {
       </section>
 
       {/* COMO FUNCIONA */}
-      <section className="py-10 bg-[#f8f9fb]">
-        <div className="max-w-[1100px] mx-auto px-6 text-center">
+      <section className="py-14 bg-[#f8f9fb]">
+        <div className="max-w-[1320px] mx-auto px-8 text-center">
           <p className="text-sm font-bold tracking-widest uppercase text-[#0f9d58] mb-3">Como funciona</p>
-          <h2 className="text-[1.8rem] font-extrabold leading-tight text-[#1a1a2e] mb-7">3 passos. Sem complicacao.</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+          <h2 className="text-[2rem] font-extrabold leading-tight text-[#1a1a2e] mb-10">3 passos. Sem complicacao.</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
             {[
               { n: '1', h: 'Conecte seu WhatsApp', p: 'Vincule o numero do seu restaurante em poucos minutos.' },
               { n: '2', h: 'Sistema encontra clientes inativos', p: 'Identifica automaticamente quem parou de voltar.' },
               { n: '3', h: 'Veja quem voltou e quanto gastou', p: 'Acompanhe o retorno e o faturamento gerado em reais.' },
             ].map(s => (
-              <div key={s.n} className="text-center">
-                <div className="w-14 h-14 rounded-full bg-[#1a1a2e] text-white text-2xl font-extrabold inline-flex items-center justify-center mb-4">{s.n}</div>
-                <h3 className="text-[1.15rem] font-bold text-[#1a1a2e] mb-2">{s.h}</h3>
-                <p className="text-[0.95rem] text-[#6b7280]">{s.p}</p>
+              <div key={s.n} className="text-center bg-white rounded-2xl p-8 shadow-sm">
+                <div className="w-16 h-16 rounded-full bg-[#1a1a2e] text-white text-2xl font-extrabold inline-flex items-center justify-center mb-5">{s.n}</div>
+                <h3 className="text-xl font-bold text-[#1a1a2e] mb-2">{s.h}</h3>
+                <p className="text-base text-[#6b7280]">{s.p}</p>
               </div>
             ))}
           </div>
@@ -115,17 +115,17 @@ export function LandingPage() {
       </section>
 
       {/* PROVA */}
-      <section className="py-10 text-center">
-        <div className="max-w-[1100px] mx-auto px-6">
+      <section className="py-14 text-center">
+        <div className="max-w-[1320px] mx-auto px-8">
           <p className="text-sm font-bold tracking-widest uppercase text-[#0f9d58] mb-3">Resultados reais</p>
-          <h2 className="text-[1.8rem] font-extrabold leading-tight text-[#1a1a2e] mb-3">
+          <h2 className="text-[2rem] font-extrabold leading-tight text-[#1a1a2e] mb-3">
             Veja o que acontece quando voce reativa seus clientes
           </h2>
-          <p className="text-[#6b7280] mb-6 text-base">Exemplo real de campanha Retorna</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-[960px] mx-auto text-left">
-            <img src="/images/full.webp" alt="Restaurante cheio" className="w-full rounded-xl shadow-lg object-cover" loading="lazy" />
-            <div className="bg-[#1a1a2e] text-white rounded-xl p-8 md:p-10">
-              <p className="text-sm font-bold tracking-wider uppercase text-white/50 mb-7">Exemplo real de campanha</p>
+          <p className="text-[#6b7280] mb-8 text-lg">Exemplo real de campanha Retorna</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center max-w-[1100px] mx-auto text-left">
+            <img src="/images/full.webp" alt="Restaurante cheio" className="w-full rounded-xl shadow-lg object-cover aspect-[4/3]" loading="lazy" />
+            <div className="bg-[#1a1a2e] text-white rounded-2xl p-10 md:p-12">
+              <p className="text-sm font-bold tracking-wider uppercase text-white/50 mb-8">Exemplo real de campanha</p>
               {[
                 { label: 'Clientes contatados', value: '120', highlight: false },
                 { label: 'Clientes que voltaram', value: '18', highlight: false },
@@ -142,8 +142,8 @@ export function LandingPage() {
       </section>
 
       {/* CTA FINAL */}
-      <section className="text-center py-10">
-        <div className="max-w-[900px] mx-auto px-6">
+      <section className="text-center py-14">
+        <div className="max-w-[1000px] mx-auto px-8">
           <h2 className="text-[clamp(1.6rem,4.5vw,2.4rem)] font-extrabold text-[#1a1a2e] mb-3">
             Pare de perder clientes<br />todos os dias
           </h2>
@@ -160,8 +160,8 @@ export function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="text-center py-6 text-[0.85rem] text-[#6b7280] border-t border-gray-200">
-        <div className="max-w-[900px] mx-auto px-6">
+      <footer className="text-center py-8 text-[0.85rem] text-[#6b7280] border-t border-gray-200">
+        <div className="max-w-[1320px] mx-auto px-8">
           Retorna &copy; 2026 &middot; Todos os direitos reservados
           <div className="mt-2 space-x-4">
             <button onClick={() => navigate('/privacy')} className="hover:underline cursor-pointer bg-transparent border-none text-[#6b7280] text-[0.85rem]">Privacidade</button>
