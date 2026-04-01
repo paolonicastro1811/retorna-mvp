@@ -172,12 +172,7 @@ export function OnboardingPage() {
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+5511999999999"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@seurestaurante.com"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
-            </div>
-            <button onClick={() => setStep(2)} disabled={!name.trim() || !phone.trim() || !email.trim()}
+            <button onClick={() => setStep(2)} disabled={!name.trim() || !phone.trim()}
               className="w-full bg-[#25D366] text-white py-3 rounded-lg font-semibold text-base hover:bg-[#1DA851] disabled:opacity-40 transition-colors mt-2">
               Próximo
             </button>
@@ -366,7 +361,7 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Passo 4 (Plano B) — Horarios */}
+        {/* Passo 4 (Plano B) — Horarios + Email */}
         {step === 4 && plan === 'automatic' && (
           <div className="space-y-4">
             <label className="block text-sm font-bold text-[#2d2d3a] mb-2">Horários de funcionamento</label>
@@ -393,6 +388,13 @@ export function OnboardingPage() {
               ))}
             </div>
 
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Seu email de acesso</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@seurestaurante.com"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
+              <p className="text-xs text-gray-400 mt-1.5">Você usará este email para entrar no painel.</p>
+            </div>
+
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
                 {error}
@@ -404,7 +406,7 @@ export function OnboardingPage() {
                 className="flex-1 border border-gray-300 text-[#2d2d3a] py-3 rounded-lg font-semibold text-sm hover:bg-gray-50">
                 Voltar
               </button>
-              <button onClick={handleSubmit} disabled={submitting}
+              <button onClick={handleSubmit} disabled={submitting || !email.trim()}
                 className="flex-1 bg-[#25D366] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
                 {submitting ? 'Ativando...' : 'Ativar restaurante'}
               </button>
@@ -412,9 +414,15 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Passo 3 (Plano A) — Confirmacao */}
+        {/* Passo 3 (Plano A) — Email + Confirmacao */}
         {step === 3 && plan === 'manual' && (
           <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Seu email de acesso</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@seurestaurante.com" autoFocus
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
+              <p className="text-xs text-gray-400 mt-1.5">Você usará este email para entrar no painel.</p>
+            </div>
             <div className="bg-green-50 border border-green-200 rounded-xl p-6">
               <h3 className="text-base font-bold text-[#1a1a2e] mb-3">O que vai acontecer:</h3>
               <ul className="text-sm text-[#6b7280] space-y-2">
@@ -435,7 +443,7 @@ export function OnboardingPage() {
                 className="flex-1 border border-gray-300 text-[#2d2d3a] py-3 rounded-lg font-semibold text-sm hover:bg-gray-50">
                 Voltar
               </button>
-              <button onClick={handleSubmit} disabled={submitting}
+              <button onClick={handleSubmit} disabled={submitting || !email.trim()}
                 className="flex-1 bg-[#25D366] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
                 {submitting ? 'Ativando...' : 'Ativar restaurante'}
               </button>
