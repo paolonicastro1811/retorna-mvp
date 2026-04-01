@@ -24,6 +24,8 @@ import whatsappConnectRouter from "./routes/whatsapp-connect.routes";
 import { prisma } from "./database/client";
 import { jwtAuth } from "./middleware/jwtAuth";
 import { tenantGuard } from "./middleware/tenantGuard";
+import { subscriptionGuard } from "./middleware/subscriptionGuard";
+import { billingRouter, stripeWebhookRouter } from "./routes/billing.routes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -90,6 +92,7 @@ const apiLimiter = rateLimit({
 
 // --- Webhook routes (BEFORE helmet — helmet can interfere with webhook payloads) ---
 app.use("/webhooks/whatsapp", webhookLimiter, whatsappWebhookRouter);
+app.use("/webhooks/stripe", express.raw({ type: "application/json" }), stripeWebhookRouter);
 
 // --- Auth routes (public — no auth required) ---
 app.use("/auth", apiLimiter, authRouter);
@@ -131,12 +134,13 @@ app.use("/restaurants", apiLimiter, (req: Request, res: Response, next: NextFunc
     return tenantGuard(req, res, next);
   });
 }, restaurantRouter);
-app.use("/restaurants", authMiddleware, tenantGuard, customerRouter);
-app.use("/restaurants", authMiddleware, tenantGuard, customerEventRouter);
-app.use("/restaurants", authMiddleware, tenantGuard, campaignRouter);
-app.use("/restaurants", authMiddleware, tenantGuard, attributionRouter);
-app.use("/restaurants", authMiddleware, tenantGuard, reservationRouter);
-app.use("/restaurants", authMiddleware, tenantGuard, liveStatsRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, customerRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, customerEventRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, campaignRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, attributionRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, reservationRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, liveStatsRouter);
+app.use("/billing", authMiddleware, billingRouter);
 app.use("/jobs", authMiddleware, jobRouter);
 app.use("/demo", authMiddleware, demoRouter);
 app.use("/whatsapp", authMiddleware, whatsappConnectRouter);

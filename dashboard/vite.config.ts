@@ -14,6 +14,8 @@ export default defineConfig({
       '/jobs': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
       '/whatsapp': 'http://localhost:3000',
+      '/billing': 'http://localhost:3000',
+      '/webhooks': 'http://localhost:3000',
     },
   },
 })

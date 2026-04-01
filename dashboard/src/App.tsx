@@ -15,6 +15,7 @@ import { SalaAoVivoPage } from './pages/SalaAoVivoPage'
 import WhatsAppConnectPage from './pages/WhatsAppConnectPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
+import { BillingPage } from './pages/BillingPage'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/auth/verificar" element={<VerifyPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/termos" element={<TermsPage />} />
+          <Route path="/assinatura" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
 
           {/* Protected Dashboard */}
           <Route path="/painel" element={

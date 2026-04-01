@@ -330,12 +330,12 @@ export function OnboardingPage() {
                 {tableRows.map((row, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="flex-1">
-                      <label className="text-xs text-gray-500">Lugares</label>
+                      <label className="text-xs text-gray-500">Assentos por mesa</label>
                       <input type="number" min="1" value={row.seats} onChange={e => updateTableRow(i, 'seats', parseInt(e.target.value) || 1)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs text-gray-500">Quantidade</label>
+                      <label className="text-xs text-gray-500">Nº de mesas</label>
                       <input type="number" min="1" value={row.qty} onChange={e => updateTableRow(i, 'qty', parseInt(e.target.value) || 1)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
                     </div>
@@ -349,7 +349,7 @@ export function OnboardingPage() {
                 + Adicionar tipo de mesa
               </button>
               <p className="text-xs text-gray-400 mt-2">
-                Total: {totalTables} mesas, {totalSeats} lugares
+                Total: {totalTables} mesas, {totalSeats} assentos
               </p>
             </div>
 

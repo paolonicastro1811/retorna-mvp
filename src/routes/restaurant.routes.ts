@@ -22,13 +22,20 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/", validate(createRestaurantSchema), async (req: Request, res: Response) => {
-  const { name, phone, timezone, plan, email, ownerName } = req.body;
+  const { name, phone, timezone, plan, email, ownerName, billingCycle } = req.body;
   if (!name) return res.status(400).json({ error: "name is required" });
+
+  const trialDays = plan === 'automatic' ? 15 : 30;
+
   const restaurant = await restaurantRepository.create({
     name,
     phone,
     timezone,
     ...(plan && { plan }),
+    billingCycle: billingCycle || 'monthly',
+    trialStartDate: new Date(),
+    trialDays,
+    subscriptionStatus: 'trialing',
   });
 
   // Create owner user + JWT if email provided (onboarding flow)

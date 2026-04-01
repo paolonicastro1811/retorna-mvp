@@ -23,8 +23,14 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
       window.location.href = '/login'
-      throw new Error('Sessao expirada')
+      throw new Error('Sessão expirada')
     }
+  }
+
+  // Subscription required → redirect to billing
+  if (res.status === 402) {
+    window.location.href = '/assinatura'
+    throw new Error('Assinatura necessária')
   }
 
   if (!res.ok) {
