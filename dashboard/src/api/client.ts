@@ -1,3 +1,5 @@
+const API_BASE = import.meta.env.PROD ? 'https://api.retornabrasil.com' : ''
+
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('auth_token')
 
@@ -6,7 +8,7 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
 
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       ...headers,
