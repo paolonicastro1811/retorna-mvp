@@ -23,6 +23,7 @@ export function OnboardingPage() {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [plan, setPlan] = useState<'manual' | 'automatic' | ''>('')
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -185,37 +186,122 @@ export function OnboardingPage() {
 
         {/* Passo 2 — Escolha do plano */}
         {step === 2 && (
-          <div className="space-y-4">
-            <p className="text-base font-medium text-[#2d2d3a] mb-3">Escolha seu plano:</p>
+          <div className="space-y-6">
+            <p className="text-lg font-bold text-[#2d2d3a] text-center">Escolha seu plano</p>
 
+            {/* Toggle mensile/annuale */}
+            <div className="flex items-center justify-center gap-3">
+              <span className={`text-sm font-medium ${billing === 'monthly' ? 'text-[#1a1a2e]' : 'text-gray-400'}`}>Mensal</span>
+              <button
+                onClick={() => setBilling(b => b === 'monthly' ? 'annual' : 'monthly')}
+                className={`relative w-14 h-7 rounded-full transition-colors ${billing === 'annual' ? 'bg-[#25D366]' : 'bg-gray-300'}`}
+              >
+                <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${billing === 'annual' ? 'translate-x-7' : 'translate-x-0.5'}`} />
+              </button>
+              <span className={`text-sm font-medium ${billing === 'annual' ? 'text-[#1a1a2e]' : 'text-gray-400'}`}>Anual</span>
+              {billing === 'annual' && (
+                <span className="text-xs bg-[#25D366] text-white px-2 py-0.5 rounded-full font-bold">-20%</span>
+              )}
+            </div>
+
+            {/* Card Plano Manual */}
             <button
               onClick={() => setPlan('manual')}
-              className={`w-full text-left border rounded-xl p-5 transition-all ${
+              className={`w-full text-left border rounded-2xl p-6 transition-all ${
                 plan === 'manual' ? 'border-[#25D366] bg-green-50 ring-2 ring-[#25D366]' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-base font-bold text-[#1a1a2e]">Plano Manual</span>
-                <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full">Basico</span>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-lg font-bold text-[#1a1a2e]">Plano Manual</span>
+                <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-semibold">Basico</span>
               </div>
-              <p className="text-sm text-gray-500">
-                Voce registra visitas e gastos manualmente. O bot responde aos clientes e um responsavel assume a conversa.
-              </p>
+
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold text-[#1a1a2e]">
+                    R$ {billing === 'monthly' ? '197' : '158'}
+                  </span>
+                  <span className="text-sm text-gray-500">/mes</span>
+                </div>
+                {billing === 'annual' && (
+                  <p className="text-xs text-gray-400 mt-1">R$ 1.896/ano (equivale a 10 meses)</p>
+                )}
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-4">
+                <p className="text-sm text-blue-700 font-semibold">30 dias gratis para testar</p>
+              </div>
+
+              <p className="text-sm font-semibold text-[#1a1a2e] mb-3">O que esta incluso:</p>
+              <ul className="space-y-2">
+                {[
+                  'Campanhas de reativacao via WhatsApp',
+                  'Registro manual de visitas e gastos',
+                  'Painel com KPIs e ROI por campanha',
+                  'Bot de atendimento inicial no WhatsApp',
+                  'Transferencia para responsavel humano',
+                  'Relatorios de clientes ativos, em risco e inativos',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                    <svg className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </button>
 
+            {/* Card Plano Automatico */}
             <button
               onClick={() => setPlan('automatic')}
-              className={`w-full text-left border rounded-xl p-5 transition-all ${
+              className={`w-full text-left border rounded-2xl p-6 transition-all relative ${
                 plan === 'automatic' ? 'border-[#25D366] bg-green-50 ring-2 ring-[#25D366]' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-base font-bold text-[#1a1a2e]">Plano Automatico</span>
-                <span className="text-xs bg-[#25D366] text-white px-3 py-1 rounded-full">Premium</span>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-[#25D366] text-white text-xs font-bold px-4 py-1 rounded-full">Mais popular</span>
               </div>
-              <p className="text-sm text-gray-500">
-                A AI gerencia reservas, calendario e mesas automaticamente. Inclui tudo do Plano Manual + gestao completa.
-              </p>
+
+              <div className="flex items-center justify-between mb-4 mt-1">
+                <span className="text-lg font-bold text-[#1a1a2e]">Plano Automatico</span>
+                <span className="text-xs bg-[#25D366] text-white px-3 py-1 rounded-full font-semibold">Premium</span>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold text-[#1a1a2e]">
+                    R$ {billing === 'monthly' ? '397' : '317'}
+                  </span>
+                  <span className="text-sm text-gray-500">/mes</span>
+                </div>
+                {billing === 'annual' && (
+                  <p className="text-xs text-gray-400 mt-1">R$ 3.804/ano (equivale a 10 meses)</p>
+                )}
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-4">
+                <p className="text-sm text-blue-700 font-semibold">15 dias gratis para testar</p>
+              </div>
+
+              <p className="text-sm font-semibold text-[#1a1a2e] mb-3">Tudo do Manual, mais:</p>
+              <ul className="space-y-2">
+                {[
+                  'Gestao automatica de reservas via WhatsApp',
+                  'Calendario inteligente com controle de mesas',
+                  'AI gerencia conversas completas sem intervencao',
+                  'Confirmacao e lembrete automatico de reservas',
+                  'Controle de capacidade em tempo real',
+                  'Relatorios avancados de ocupacao e demanda',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                    <svg className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </button>
 
             <div className="flex gap-3 mt-2">
