@@ -98,8 +98,17 @@ app.use("/webhooks/stripe", express.raw({ type: "application/json" }), stripeWeb
 app.use("/auth", apiLimiter, authRouter);
 
 // --- Health check ---
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get("/health", async (_req, res) => {
+  let dbStatus = "unknown";
+  let dbError = "";
+  try {
+    const result = await prisma.$queryRaw`SELECT 1 as ok`;
+    dbStatus = "connected";
+  } catch (e: any) {
+    dbStatus = "error";
+    dbError = e.message || String(e);
+  }
+  res.json({ status: "ok", timestamp: new Date().toISOString(), db: dbStatus, dbError: dbError || undefined });
 });
 
 // --- Helmet (after webhooks — not needed for Meta server-to-server calls) ---
