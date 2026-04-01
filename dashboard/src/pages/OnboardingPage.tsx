@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
+import { useAuth } from '../contexts/AuthContext'
 
 interface TableRow { seats: number; qty: number }
 
@@ -16,6 +17,7 @@ const DEFAULT_HOURS = [
 
 export function OnboardingPage() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [step, setStep] = useState(1)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -44,19 +46,37 @@ export function OnboardingPage() {
   }
 
   const handleSubmit = async () => {
-    if (!name.trim() || !phone.trim() || !plan) return
+    if (!name.trim() || !phone.trim() || !plan || !email.trim()) return
     setSubmitting(true)
     try {
-      const res = await api<{ id: string }>('/restaurants', {
+      const res = await api<{
+        id: string
+        token?: string
+        user?: { id: string; email: string; name: string | null }
+      }>('/restaurants', {
         method: 'POST',
         body: JSON.stringify({
           name: name.trim(),
           phone: phone.trim(),
           plan,
+          email: email.trim(),
+          ownerName: name.trim(),
         }),
       })
 
       const rid = res.id
+
+      // Auto-login with JWT returned from onboarding
+      if (res.token && res.user) {
+        login(res.token, {
+          id: res.user.id,
+          email: res.user.email,
+          name: res.user.name,
+          restaurantId: rid,
+          restaurantName: name.trim(),
+        })
+      }
+
       localStorage.setItem('restaurantId', rid)
       localStorage.setItem('restaurantName', name.trim())
       localStorage.setItem('restaurantPlan', plan)
@@ -153,7 +173,7 @@ export function OnboardingPage() {
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@seurestaurante.com"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
             </div>
-            <button onClick={() => setStep(2)} disabled={!name.trim() || !phone.trim()}
+            <button onClick={() => setStep(2)} disabled={!name.trim() || !phone.trim() || !email.trim()}
               className="w-full bg-[#25D366] text-white py-2 rounded-lg font-semibold text-xs hover:bg-[#1DA851] disabled:opacity-40 transition-colors mt-1">
               Proximo
             </button>

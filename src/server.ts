@@ -13,6 +13,7 @@ import { campaignRouter } from "./routes/campaign.routes";
 import { attributionRouter } from "./routes/attribution.routes";
 import { jobRouter } from "./routes/job.routes";
 import { whatsappWebhookRouter } from "./webhooks/whatsapp.webhook";
+import { authRouter } from "./routes/auth.routes";
 import { demoRouter } from "./routes/demo.routes";
 import { reservationRouter } from "./routes/reservation.routes";
 import { runLifecycleRefresh } from "./jobs/lifecycleRefresh.job";
@@ -20,6 +21,7 @@ import { runPostVisitConsent } from "./jobs/postVisitConsent.job";
 import { runDailyAutomation } from "./services/loyalty.service";
 import { liveStatsRouter } from "./routes/liveStats.routes";
 import { prisma } from "./database/client";
+import { jwtAuth } from "./middleware/jwtAuth";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,13 +31,23 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
   : ["http://localhost:5173", "http://localhost:3000"];
 
-// --- API Key auth middleware (skip webhook + health) ---
+// --- API Key auth middleware (server-to-server) ---
 const API_KEY = process.env.API_KEY; // optional: set in .env to enable auth
 function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
   if (!API_KEY) return next(); // auth disabled if no key set
   const key = req.headers["x-api-key"] || req.query.apiKey;
   if (key === API_KEY) return next();
   res.status(401).json({ error: "Unauthorized — invalid or missing API key" });
+}
+
+// --- Combined auth middleware: JWT (dashboard) OR API key (server-to-server) ---
+function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  // If Authorization header present → try JWT
+  if (req.headers.authorization?.startsWith("Bearer ")) {
+    return jwtAuth(req, res, next);
+  }
+  // Otherwise fall back to API key (server-to-server, curl, etc.)
+  return apiKeyAuth(req, res, next);
 }
 
 // --- Global request logger (first middleware — logs everything) ---
@@ -77,6 +89,9 @@ const apiLimiter = rateLimit({
 // --- Webhook routes (BEFORE helmet — helmet can interfere with webhook payloads) ---
 app.use("/webhooks/whatsapp", webhookLimiter, whatsappWebhookRouter);
 
+// --- Auth routes (public — no auth required) ---
+app.use("/auth", apiLimiter, authRouter);
+
 // --- Health check ---
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -85,16 +100,22 @@ app.get("/health", (_req, res) => {
 // --- Helmet (after webhooks — not needed for Meta server-to-server calls) ---
 app.use(helmet());
 
-// --- Routes (protected by API key if API_KEY is set + rate limited) ---
-app.use("/restaurants", apiLimiter, apiKeyAuth, restaurantRouter);
-app.use("/restaurants", apiKeyAuth, customerRouter);
-app.use("/restaurants", apiKeyAuth, customerEventRouter);
-app.use("/restaurants", apiKeyAuth, campaignRouter);
-app.use("/restaurants", apiKeyAuth, attributionRouter);
-app.use("/restaurants", apiKeyAuth, reservationRouter);
-app.use("/restaurants", apiKeyAuth, liveStatsRouter);
-app.use("/jobs", apiKeyAuth, jobRouter);
-app.use("/demo", apiKeyAuth, demoRouter);
+// --- Routes (protected by JWT or API key + rate limited) ---
+// Onboarding: POST /restaurants is public (creates restaurant + user + JWT)
+app.use("/restaurants", apiLimiter, (req: Request, res: Response, next: NextFunction) => {
+  // Allow POST /restaurants without auth (onboarding)
+  if (req.method === "POST" && req.path === "/") return next();
+  // Everything else requires auth
+  return authMiddleware(req, res, next);
+}, restaurantRouter);
+app.use("/restaurants", authMiddleware, customerRouter);
+app.use("/restaurants", authMiddleware, customerEventRouter);
+app.use("/restaurants", authMiddleware, campaignRouter);
+app.use("/restaurants", authMiddleware, attributionRouter);
+app.use("/restaurants", authMiddleware, reservationRouter);
+app.use("/restaurants", authMiddleware, liveStatsRouter);
+app.use("/jobs", authMiddleware, jobRouter);
+app.use("/demo", authMiddleware, demoRouter);
 
 // --- Cron Jobs ---
 // Lifecycle refresh: a cada hora
@@ -178,7 +199,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(PORT, () => {
   console.log(`[Server] Reactivation MVP running on port ${PORT}`);
   console.log(`[Server] CORS: ${ALLOWED_ORIGINS.join(", ")}`);
-  console.log(`[Server] Auth: ${API_KEY ? "API key required" : "disabled (set API_KEY to enable)"}`);
+  console.log(`[Server] Auth: JWT (Magic Link) + ${API_KEY ? "API key fallback" : "no API key (set API_KEY for server-to-server)"}`);
 });
 
 export default app;

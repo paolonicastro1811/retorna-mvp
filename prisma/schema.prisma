@@ -51,6 +51,7 @@ model Restaurant {
   hours                RestaurantHours[]
   reservations         Reservation[]
   automationLogs       AutomationLog[]
+  users                User[]
 
   @@map("restaurants")
 }
@@ -435,4 +436,40 @@ model AutomationLog {
   @@index([customerId])
   @@index([restaurantId, createdAt])
   @@map("automation_logs")
+}
+
+// --------------------------------------------------
+// USER — Utente dashboard (proprietario/gestore ristorante)
+// Autenticacao via Magic Link (sem senha).
+// --------------------------------------------------
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  restaurantId String   @map("restaurant_id")
+  role         String   @default("owner") // owner | manager (future)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+  @@map("users")
+}
+
+// --------------------------------------------------
+// MAGIC_LINK_TOKEN — Token de acesso unico via email
+// Expira em 15 minutos, utilizavel apenas uma vez.
+// --------------------------------------------------
+model MagicLinkToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  email     String
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([token])
+  @@index([email])
+  @@map("magic_link_tokens")
 }

@@ -4,6 +4,7 @@ import { restaurantRepository } from "../repositories/restaurant.repository";
 import { param } from "../shared/params";
 import { prisma } from "../database/client";
 import { generateLayout } from "../services/layoutGenerator.service";
+import { signJwt } from "../middleware/jwtAuth";
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/", async (req: Request, res: Response) => {
-  const { name, phone, timezone, plan } = req.body;
+  const { name, phone, timezone, plan, email, ownerName } = req.body;
   if (!name) return res.status(400).json({ error: "name is required" });
   const restaurant = await restaurantRepository.create({
     name,
@@ -27,7 +28,34 @@ router.post("/", async (req: Request, res: Response) => {
     timezone,
     ...(plan && { plan }),
   });
-  res.status(201).json(restaurant);
+
+  // Create owner user + JWT if email provided (onboarding flow)
+  let user = null;
+  let token = null;
+  if (email) {
+    const normalizedEmail = email.toLowerCase().trim();
+    // Check if user with this email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (!existingUser) {
+      user = await prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          name: ownerName || name,
+          restaurantId: restaurant.id,
+        },
+      });
+      // Auto-login: generate JWT so user enters the dashboard immediately
+      token = signJwt({
+        userId: user.id,
+        email: user.email,
+        restaurantId: restaurant.id,
+      });
+    }
+  }
+
+  res.status(201).json({ ...restaurant, user, token });
 });
 
 router.put("/:id", async (req: Request, res: Response) => {
