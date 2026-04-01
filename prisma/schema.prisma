@@ -367,6 +367,7 @@ model AutomationLog {
 model User {
   id           String     @id @default(cuid())
   email        String     @unique
+  passwordHash String?    @map("password_hash")
   name         String?
   restaurantId String     @map("restaurant_id")
   role         String     @default("owner")

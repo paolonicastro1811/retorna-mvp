@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { restaurantRepository } from "../repositories/restaurant.repository";
 import { param } from "../shared/params";
 import { prisma } from "../database/client";
@@ -22,7 +23,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/", validate(createRestaurantSchema), async (req: Request, res: Response) => {
-  const { name, phone, timezone, plan, email, ownerName, billingCycle } = req.body;
+  const { name, phone, timezone, plan, email, password, ownerName, billingCycle } = req.body;
   if (!name) return res.status(400).json({ error: "name is required" });
 
   const trialDays = plan === 'automatic' ? 15 : 30;
@@ -48,11 +49,13 @@ router.post("/", validate(createRestaurantSchema), async (req: Request, res: Res
       where: { email: normalizedEmail },
     });
     if (!existingUser) {
+      const passwordHash = password ? await bcrypt.hash(password, 10) : null;
       user = await prisma.user.create({
         data: {
           email: normalizedEmail,
           name: ownerName || name,
           restaurantId: restaurant.id,
+          ...(passwordHash && { passwordHash }),
         },
       });
       // Auto-login: generate JWT so user enters the dashboard immediately

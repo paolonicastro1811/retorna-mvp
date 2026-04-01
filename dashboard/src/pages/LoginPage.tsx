@@ -1,65 +1,74 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
+import { useAuth } from '../contexts/AuthContext'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [devMagicLink, setDevMagicLink] = useState('')
-  const [resendCooldown, setResendCooldown] = useState(0)
+  const [forgotMode, setForgotMode] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
-  // Cooldown timer
-  useEffect(() => {
-    if (resendCooldown <= 0) return
-    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
-    return () => clearTimeout(t)
-  }, [resendCooldown])
-
-  const sendLink = useCallback(async () => {
-    if (!email.trim()) return
-
-    setSending(true)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim() || !password.trim()) return
+    setLoading(true)
     setError('')
-    setDevMagicLink('')
 
     try {
-      const data = await api<{ message: string; magicLink?: string }>('/auth/magic-link', {
+      const data = await api<{
+        token: string
+        user: { id: string; email: string; name: string | null; restaurantId: string; restaurantName: string }
+      }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim(), password }),
+      })
+
+      login(data.token, {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        restaurantId: data.user.restaurantId,
+        restaurantName: data.user.restaurantName,
+      })
+
+      navigate('/painel')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : ''
+      if (message.includes('401')) {
+        setError('Email ou senha incorretos.')
+      } else {
+        setError('Erro ao fazer login. Tente novamente.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) return
+    setLoading(true)
+    setError('')
+
+    try {
+      await api('/auth/reset-password', {
         method: 'POST',
         body: JSON.stringify({ email: email.trim() }),
       })
-      setSent(true)
-      setResendCooldown(60)
-      // In dev mode, backend returns magicLink in response
-      if (data?.magicLink) {
-        setDevMagicLink(data.magicLink)
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : ''
-      if (message.includes('404') || message.includes('nao cadastrado')) {
-        setError('Email não encontrado. Verifique ou crie uma conta.')
-      } else {
-        setError('Erro ao enviar o link. Tente novamente.')
-      }
+      setResetSent(true)
+    } catch {
+      setError('Erro ao enviar email. Tente novamente.')
     } finally {
-      setSending(false)
+      setLoading(false)
     }
-  }, [email])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    await sendLink()
   }
 
-  const handleResend = async () => {
-    if (resendCooldown > 0 || sending) return
-    await sendLink()
-  }
-
-  // Success state — email sent
-  if (sent) {
+  if (resetSent) {
     return (
       <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-6">
         <div className="max-w-lg w-full text-center">
@@ -70,63 +79,36 @@ export function LoginPage() {
           </div>
           <h1 className="text-2xl font-extrabold text-[#1a1a2e] mb-3">Verifique seu email</h1>
           <p className="text-base text-[#6b7280] mb-1">
-            Enviamos um link de acesso para:
+            Se o email estiver cadastrado, enviamos um link para redefinir sua senha:
           </p>
           <p className="text-base font-bold text-[#1a1a2e] mb-6">{email}</p>
 
-          {devMagicLink && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
-              <p className="text-xs text-blue-700 font-semibold mb-1">Modo desenvolvimento:</p>
-              <a
-                href={devMagicLink}
-                className="text-xs text-blue-600 underline break-all"
-              >
-                Clique aqui para entrar
-              </a>
-            </div>
-          )}
-
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 text-left">
-            <p className="text-xs text-amber-700">
-              <strong>Não recebeu?</strong> Verifique a pasta de spam. O link expira em 15 minutos.
-            </p>
-          </div>
-
           <button
-            onClick={handleResend}
-            disabled={resendCooldown > 0 || sending}
-            className="w-full bg-[#25D366] text-white py-3 rounded-lg font-bold text-base hover:bg-[#1DA851] disabled:opacity-40 transition-colors mb-4"
+            onClick={() => { setForgotMode(false); setResetSent(false); setPassword('') }}
+            className="w-full bg-[#25D366] text-white py-3 rounded-lg font-bold text-base hover:bg-[#1DA851] transition-colors"
           >
-            {sending
-              ? 'Reenviando...'
-              : resendCooldown > 0
-                ? `Reenviar em ${resendCooldown}s`
-                : 'Reenviar link de acesso'}
-          </button>
-
-          <button
-            onClick={() => { setSent(false); setEmail('') }}
-            className="text-base text-[#6b7280] hover:text-[#2d2d3a] hover:underline"
-          >
-            Tentar com outro email
+            Voltar ao login
           </button>
         </div>
       </div>
     )
   }
 
-  // Login form
   return (
     <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-6">
       <div className="max-w-lg w-full">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-extrabold text-[#1a1a2e] mb-2">Entrar no painel</h1>
+          <h1 className="text-2xl font-extrabold text-[#1a1a2e] mb-2">
+            {forgotMode ? 'Redefinir senha' : 'Entrar no painel'}
+          </h1>
           <p className="text-base text-[#6b7280]">
-            Informe seu email para receber um link de acesso seguro
+            {forgotMode
+              ? 'Informe seu email para receber um link de redefinição'
+              : 'Entre com seu email e senha'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={forgotMode ? handleForgotPassword : handleLogin} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Email</label>
             <input
@@ -140,6 +122,20 @@ export function LoginPage() {
             />
           </div>
 
+          {!forgotMode && (
+            <div>
+              <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Senha</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Sua senha"
+                autoComplete="current-password"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent"
+              />
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-xs text-red-600">{error}</p>
@@ -148,17 +144,27 @@ export function LoginPage() {
 
           <button
             type="submit"
-            disabled={!email.trim() || sending}
+            disabled={!email.trim() || (!forgotMode && !password.trim()) || loading}
             className="w-full bg-[#25D366] text-white py-3 rounded-lg font-bold text-base hover:bg-[#1DA851] disabled:opacity-40 transition-colors"
           >
-            {sending ? 'Enviando...' : 'Enviar link de acesso'}
+            {loading
+              ? (forgotMode ? 'Enviando...' : 'Entrando...')
+              : (forgotMode ? 'Enviar link de redefinição' : 'Entrar')}
           </button>
         </form>
 
-        <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <p className="text-xs text-gray-400 text-center leading-relaxed">
-            🔒 Sem senha — você receberá um link único e seguro no email. A sessão permanece ativa por <strong>30 dias</strong>.
-          </p>
+        <div className="text-center mt-4">
+          {forgotMode ? (
+            <button onClick={() => { setForgotMode(false); setError('') }}
+              className="text-sm text-[#25D366] font-semibold hover:underline">
+              Voltar ao login
+            </button>
+          ) : (
+            <button onClick={() => { setForgotMode(true); setError('') }}
+              className="text-sm text-[#6b7280] hover:text-[#2d2d3a] hover:underline">
+              Esqueci minha senha
+            </button>
+          )}
         </div>
 
         <div className="text-center mt-6">

@@ -8,6 +8,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/auth/magic-link': 'http://localhost:3000',
+      '/auth/login': 'http://localhost:3000',
+      '/auth/reset-password': 'http://localhost:3000',
+      '/auth/set-password': 'http://localhost:3000',
       '/auth/verify': 'http://localhost:3000',
       '/restaurants': 'http://localhost:3000',
       '/demo': 'http://localhost:3000',

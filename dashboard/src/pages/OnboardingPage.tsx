@@ -22,6 +22,7 @@ export function OnboardingPage() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [plan, setPlan] = useState<'manual' | 'automatic' | ''>('')
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
   const [submitting, setSubmitting] = useState(false)
@@ -48,7 +49,7 @@ export function OnboardingPage() {
   }
 
   const handleSubmit = async () => {
-    if (!name.trim() || !phone.trim() || !plan || !email.trim()) return
+    if (!name.trim() || !phone.trim() || !plan || !email.trim() || !password.trim()) return
     setSubmitting(true)
     setError(null)
     try {
@@ -63,6 +64,7 @@ export function OnboardingPage() {
           phone: phone.trim().startsWith('+') ? phone.trim() : `+55${phone.trim()}`,
           plan,
           email: email.trim(),
+          password: password.trim(),
           ownerName: name.trim(),
         }),
       })
@@ -397,7 +399,11 @@ export function OnboardingPage() {
               <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Seu email de acesso</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@seurestaurante.com"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
-              <p className="text-xs text-gray-400 mt-1.5">Você usará este email para entrar no painel.</p>
+            </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Crie uma senha</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
             </div>
 
             {error && (
@@ -411,7 +417,7 @@ export function OnboardingPage() {
                 className="flex-1 border border-gray-300 text-[#2d2d3a] py-3 rounded-lg font-semibold text-sm hover:bg-gray-50">
                 Voltar
               </button>
-              <button onClick={handleSubmit} disabled={submitting || !email.trim()}
+              <button onClick={handleSubmit} disabled={submitting || !email.trim() || password.length < 6}
                 className="flex-1 bg-[#25D366] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
                 {submitting ? 'Ativando...' : 'Ativar restaurante'}
               </button>
@@ -419,14 +425,18 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Passo 3 (Plano A) — Email + Confirmacao */}
+        {/* Passo 3 (Plano A) — Email + Password + Confirmacao */}
         {step === 3 && plan === 'manual' && (
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Seu email de acesso</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@seurestaurante.com" autoFocus
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
-              <p className="text-xs text-gray-400 mt-1.5">Você usará este email para entrar no painel.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Crie uma senha</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
             </div>
             <div className="bg-green-50 border border-green-200 rounded-xl p-6">
               <h3 className="text-base font-bold text-[#1a1a2e] mb-3">O que vai acontecer:</h3>
@@ -448,7 +458,7 @@ export function OnboardingPage() {
                 className="flex-1 border border-gray-300 text-[#2d2d3a] py-3 rounded-lg font-semibold text-sm hover:bg-gray-50">
                 Voltar
               </button>
-              <button onClick={handleSubmit} disabled={submitting || !email.trim()}
+              <button onClick={handleSubmit} disabled={submitting || !email.trim() || password.length < 6}
                 className="flex-1 bg-[#25D366] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
                 {submitting ? 'Ativando...' : 'Ativar restaurante'}
               </button>

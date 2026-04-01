@@ -7,6 +7,7 @@
 
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { prisma } from "../database/client";
 import { signJwt } from "../middleware/jwtAuth";
 import { sendMagicLinkEmail } from "../services/email.service";
@@ -132,6 +133,147 @@ router.get("/verify", async (req: Request, res: Response) => {
   }
 
   // Generate JWT (30 days)
+  const jwt = signJwt({
+    userId: user.id,
+    email: user.email,
+    restaurantId: user.restaurantId,
+  });
+
+  res.json({
+    token: jwt,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      restaurantId: user.restaurantId,
+      restaurantName: user.restaurant.name,
+    },
+  });
+});
+
+/**
+ * POST /auth/reset-password
+ * Body: { email: string }
+ * Envia um magic link para redefinir a senha.
+ */
+router.post("/reset-password", async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email é obrigatório" });
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    include: { restaurant: { select: { name: true } } },
+  });
+
+  // Always return success (don't reveal if email exists)
+  if (!user) {
+    return res.json({ message: "Se o email existir, você receberá um link para redefinir sua senha." });
+  }
+
+  const token = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 min
+
+  await prisma.magicLinkToken.create({
+    data: { token, email: normalizedEmail, expiresAt },
+  });
+
+  const APP_URL = process.env.APP_URL || "http://localhost:5173";
+  const resetLink = `${APP_URL}/auth/redefinir-senha?token=${token}`;
+
+  try {
+    await sendMagicLinkEmail(normalizedEmail, token, user.restaurant.name);
+  } catch (err: any) {
+    console.error("[Auth] Failed to send reset email:", err);
+  }
+
+  res.json({ message: "Se o email existir, você receberá um link para redefinir sua senha." });
+});
+
+/**
+ * POST /auth/set-password
+ * Body: { token: string, password: string }
+ * Redefine a senha usando o magic link token.
+ */
+router.post("/set-password", async (req: Request, res: Response) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ error: "Token e senha são obrigatórios" });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
+  }
+
+  const magicToken = await prisma.magicLinkToken.findUnique({ where: { token } });
+
+  if (!magicToken || magicToken.usedAt || magicToken.expiresAt < new Date()) {
+    return res.status(401).json({ error: "Link inválido ou expirado" });
+  }
+
+  await prisma.magicLinkToken.update({
+    where: { id: magicToken.id },
+    data: { usedAt: new Date() },
+  });
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.update({
+    where: { email: magicToken.email },
+    data: { passwordHash },
+    include: { restaurant: { select: { name: true } } },
+  });
+
+  const jwt = signJwt({
+    userId: user.id,
+    email: user.email,
+    restaurantId: user.restaurantId,
+  });
+
+  res.json({
+    token: jwt,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      restaurantId: user.restaurantId,
+      restaurantName: user.restaurant.name,
+    },
+  });
+});
+
+/**
+ * POST /auth/login
+ * Body: { email: string, password: string }
+ * Login classico con email e password.
+ */
+router.post("/login", async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email e senha são obrigatórios" });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    include: { restaurant: { select: { name: true } } },
+  });
+
+  if (!user) {
+    return res.status(401).json({ error: "Email ou senha incorretos" });
+  }
+
+  if (!user.passwordHash) {
+    return res.status(401).json({ error: "Conta sem senha. Use o link mágico ou redefina sua senha." });
+  }
+
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) {
+    return res.status(401).json({ error: "Email ou senha incorretos" });
+  }
+
   const jwt = signJwt({
     userId: user.id,
     email: user.email,
