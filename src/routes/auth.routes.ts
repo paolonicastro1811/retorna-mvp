@@ -74,9 +74,9 @@ router.post("/magic-link", validate(magicLinkSchema), async (req: Request, res: 
 
   try {
     await sendMagicLinkEmail(normalizedEmail, token, user.restaurant.name);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[Auth] Failed to send magic link email:", err);
-    return res.status(500).json({ error: "Erro ao enviar email" });
+    return res.status(500).json({ error: "Erro ao enviar email", detail: err.message || String(err) });
   }
 
   // In dev mode, also return the magic link in the response for easy testing
