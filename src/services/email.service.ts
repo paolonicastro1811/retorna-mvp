@@ -84,7 +84,17 @@ export async function sendMagicLinkEmail(
 
   if (error) {
     console.error(`[Email] Erro ao enviar para ${to}:`, error);
-    throw new Error(`Falha ao enviar email: ${error.message}`);
+    // Fallback: log magic link to console so dev/testing can continue
+    console.log(`\n${"=".repeat(60)}`);
+    console.log(`[Magic Link FALLBACK] Email falhou, mas aqui esta o link:`);
+    console.log(`[Magic Link] Email para: ${to}`);
+    console.log(`[Magic Link] URL: ${magicLink}`);
+    console.log(`${"=".repeat(60)}\n`);
+    // Don't throw — allow login flow to continue in dev
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(`Falha ao enviar email: ${error.message}`);
+    }
+    return;
   }
 
   console.log(`[Email] Magic link enviado para ${to}`);

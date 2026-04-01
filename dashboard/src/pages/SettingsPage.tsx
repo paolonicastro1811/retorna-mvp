@@ -95,7 +95,7 @@ export function SettingsPage() {
   const [timezone, setTimezone] = useState('')
 
   // Hours (Plan B)
-  const [hours, setHours] = useState<Hour[]>([])
+  const [_hours, setHours] = useState<Hour[]>([])
   const [editHours, setEditHours] = useState<{ dayOfWeek: number; open: string; close: string; closed: boolean }[]>([])
   const [savingHours, setSavingHours] = useState(false)
   const [savedHours, setSavedHours] = useState(false)

@@ -162,7 +162,11 @@ export function LandingPage() {
       {/* FOOTER */}
       <footer className="text-center py-6 text-[0.8rem] text-[#6b7280] border-t border-gray-200">
         <div className="max-w-[720px] mx-auto px-6">
-          Retorna &copy; 2026 · Todos os direitos reservados
+          Retorna &copy; 2026 &middot; Todos os direitos reservados
+          <div className="mt-2 space-x-4">
+            <button onClick={() => navigate('/privacy')} className="hover:underline cursor-pointer bg-transparent border-none text-[#6b7280] text-[0.8rem]">Privacidade</button>
+            <button onClick={() => navigate('/termos')} className="hover:underline cursor-pointer bg-transparent border-none text-[#6b7280] text-[0.8rem]">Termos de Uso</button>
+          </div>
           <p className="mt-3 text-[0.68rem] text-gray-400 max-w-[480px] mx-auto leading-relaxed">
             Ao ativar o sistema, voce confirma que possui autorizacao para contatar seus clientes via WhatsApp conforme a LGPD. Todas as mensagens incluem opcao de descadastro.
           </p>

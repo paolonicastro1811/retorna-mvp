@@ -13,6 +13,8 @@ import { AutomacoesPage } from './pages/AutomacoesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SalaAoVivoPage } from './pages/SalaAoVivoPage'
 import WhatsAppConnectPage from './pages/WhatsAppConnectPage'
+import { PrivacyPage } from './pages/PrivacyPage'
+import { TermsPage } from './pages/TermsPage'
 
 export default function App() {
   return (
@@ -24,6 +26,8 @@ export default function App() {
           <Route path="/comecar" element={<OnboardingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/verificar" element={<VerifyPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/termos" element={<TermsPage />} />
 
           {/* Protected Dashboard */}
           <Route path="/painel" element={

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 
@@ -8,20 +8,34 @@ export function LoginPage() {
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+  const [devMagicLink, setDevMagicLink] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendCooldown])
+
+  const sendLink = useCallback(async () => {
     if (!email.trim()) return
 
     setSending(true)
     setError('')
+    setDevMagicLink('')
 
     try {
-      await api('/auth/magic-link', {
+      const data = await api<{ message: string; magicLink?: string }>('/auth/magic-link', {
         method: 'POST',
         body: JSON.stringify({ email: email.trim() }),
       })
       setSent(true)
+      setResendCooldown(60)
+      // In dev mode, backend returns magicLink in response
+      if (data?.magicLink) {
+        setDevMagicLink(data.magicLink)
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : ''
       if (message.includes('404') || message.includes('nao cadastrado')) {
@@ -32,6 +46,16 @@ export function LoginPage() {
     } finally {
       setSending(false)
     }
+  }, [email])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await sendLink()
+  }
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || sending) return
+    await sendLink()
   }
 
   // Success state — email sent
@@ -50,6 +74,18 @@ export function LoginPage() {
           </p>
           <p className="text-sm font-bold text-[#1a1a2e] mb-6">{email}</p>
 
+          {devMagicLink && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
+              <p className="text-xs text-blue-700 font-semibold mb-1">Modo desenvolvimento:</p>
+              <a
+                href={devMagicLink}
+                className="text-xs text-blue-600 underline break-all"
+              >
+                Clique aqui para entrar
+              </a>
+            </div>
+          )}
+
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 text-left">
             <p className="text-xs text-amber-700">
               <strong>Nao recebeu?</strong> Verifique a pasta de spam. O link expira em 15 minutos.
@@ -57,8 +93,20 @@ export function LoginPage() {
           </div>
 
           <button
+            onClick={handleResend}
+            disabled={resendCooldown > 0 || sending}
+            className="w-full bg-[#25D366] text-white py-2.5 rounded-lg font-bold text-sm hover:bg-[#1DA851] disabled:opacity-40 transition-colors mb-4"
+          >
+            {sending
+              ? 'Reenviando...'
+              : resendCooldown > 0
+                ? `Reenviar em ${resendCooldown}s`
+                : 'Reenviar link de acesso'}
+          </button>
+
+          <button
             onClick={() => { setSent(false); setEmail('') }}
-            className="text-sm text-[#25D366] font-semibold hover:underline"
+            className="text-sm text-[#6b7280] hover:text-[#2d2d3a] hover:underline"
           >
             Tentar com outro email
           </button>

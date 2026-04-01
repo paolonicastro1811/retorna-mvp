@@ -69,6 +69,9 @@ router.post("/magic-link", validate(magicLinkSchema), async (req: Request, res: 
   });
 
   // Send email
+  const APP_URL = process.env.APP_URL || "http://localhost:5173";
+  const magicLink = `${APP_URL}/auth/verificar?token=${token}`;
+
   try {
     await sendMagicLinkEmail(normalizedEmail, token, user.restaurant.name);
   } catch (err) {
@@ -76,7 +79,12 @@ router.post("/magic-link", validate(magicLinkSchema), async (req: Request, res: 
     return res.status(500).json({ error: "Erro ao enviar email" });
   }
 
-  res.json({ message: "Link de acesso enviado para seu email" });
+  // In dev mode, also return the magic link in the response for easy testing
+  const isDev = process.env.NODE_ENV !== "production";
+  res.json({
+    message: "Link de acesso enviado para seu email",
+    ...(isDev && { magicLink }),
+  });
 });
 
 /**
