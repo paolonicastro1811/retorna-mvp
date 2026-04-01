@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { messagingService } from "../services/messaging.service";
 import { customerRepository } from "../repositories/customer.repository";
 import { OptInStatus, ContactableStatus, OPT_OUT_KEYWORDS, DATA_DELETE_KEYWORDS, AcquisitionSource } from "../shared/enums";
-import { whatsappProvider } from "../services/whatsapp.provider";
+import { whatsappProvider, WhatsAppCredentials } from "../services/whatsapp.provider";
 import { prisma } from "../database/client";
 import { getConversationWindow, saveConversationReply } from "../services/intent/conversation.service";
 import { classifyIntent } from "../services/intent/classifier.service";
@@ -149,8 +149,28 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
         const messages = change?.value?.messages;
         const metadata = change?.value?.metadata;
         const businessPhone = metadata?.display_phone_number as string | undefined;
+        const webhookPhoneNumberId = metadata?.phone_number_id as string | undefined;
 
         if (Array.isArray(messages)) {
+          // --- Look up restaurant by phone_number_id (per-restaurant routing) ---
+          let waRestaurant: { id: string; waAccessToken: string | null; waPhoneNumberId: string | null } | null = null;
+          let waCredentials: WhatsAppCredentials | undefined;
+
+          if (webhookPhoneNumberId) {
+            waRestaurant = await prisma.restaurant.findFirst({
+              where: { waPhoneNumberId: webhookPhoneNumberId },
+              select: { id: true, waAccessToken: true, waPhoneNumberId: true },
+            });
+            if (waRestaurant?.waAccessToken && waRestaurant?.waPhoneNumberId) {
+              waCredentials = {
+                accessToken: waRestaurant.waAccessToken,
+                phoneNumberId: waRestaurant.waPhoneNumberId,
+              };
+            } else if (!waRestaurant) {
+              console.warn(`[Webhook:WhatsApp] No restaurant found for phone_number_id: ${webhookPhoneNumberId}`);
+            }
+          }
+
           for (const msg of messages) {
             const from = msg.from as string | undefined;
             const text = (msg.text?.body as string | undefined)?.trim().toLowerCase();
@@ -173,8 +193,11 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
 
             // --- Auto-create unknown customer (immediate) ---
             if (!customer) {
-              let restaurantId: string | null = null;
-              if (businessPhone) {
+              // Prefer restaurant resolved from phone_number_id (per-restaurant routing)
+              let restaurantId: string | null = waRestaurant?.id ?? null;
+
+              // Fallback: match by business phone number
+              if (!restaurantId && businessPhone) {
                 const phoneVariantsRestaurant = [businessPhone, `+${businessPhone}`];
                 for (const rp of phoneVariantsRestaurant) {
                   const rest = await prisma.restaurant.findFirst({ where: { phone: rp } });
@@ -226,7 +249,8 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
               // Send opt-out confirmation (Meta best practice + LGPD transparency)
               await whatsappProvider.sendMessage(
                 phoneE164,
-                "Pronto! Você não receberá mais mensagens nossas. Se mudar de ideia, é só nos escrever novamente. 😊"
+                "Pronto! Você não receberá mais mensagens nossas. Se mudar de ideia, é só nos escrever novamente. 😊",
+                waCredentials
               );
               console.log(
                 `[Webhook:WhatsApp] Opt-out confirmed: customer=${customer.id} phone=${from}`
@@ -251,7 +275,8 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
               });
               await whatsappProvider.sendMessage(
                 phoneE164,
-                "Seus dados foram removidos do nosso sistema, conforme seu direito pela LGPD. Se precisar de algo no futuro, e so nos escrever. 🙏"
+                "Seus dados foram removidos do nosso sistema, conforme seu direito pela LGPD. Se precisar de algo no futuro, e so nos escrever. 🙏",
+                waCredentials
               );
               console.log(
                 `[LGPD] Customer soft-deleted via WhatsApp: id=${deleteId} phone=${from}`
@@ -277,7 +302,7 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
               const confirmMsg = customer.name
                 ? `Perfeito, ${customer.name}! 🎉 Vai ser um prazer te manter por dentro das novidades. Ate breve!`
                 : `Perfeito! 🎉 Vai ser um prazer te manter por dentro das novidades. Ate breve!\n\nAh, e como posso te chamar? 😊`;
-              await whatsappProvider.sendMessage(phoneE164, confirmMsg);
+              await whatsappProvider.sendMessage(phoneE164, confirmMsg, waCredentials);
               await saveConversationReply(customer.restaurantId, customer.id, phoneE164, confirmMsg, "marketing_opt_in");
               console.log(
                 `[Webhook:WhatsApp] Marketing opt-in confirmed → ACTIVE: customer=${customer.id} phone=${from}`
@@ -295,7 +320,7 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
             ) {
               const name = customer.name ?? "voce";
               const declineMsg = `Tudo bem, ${name}! Sem problema nenhum 😊 Se mudar de ideia, e so falar. Estamos aqui!`;
-              await whatsappProvider.sendMessage(phoneE164, declineMsg);
+              await whatsappProvider.sendMessage(phoneE164, declineMsg, waCredentials);
               await saveConversationReply(customer.restaurantId, customer.id, phoneE164, declineMsg, "marketing_opt_decline");
               console.log(
                 `[Webhook:WhatsApp] Marketing opt-in declined (stays INACTIVE): customer=${customer.id} phone=${from}`
@@ -324,7 +349,7 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
                 });
                 // Ask for explicit consent (LGPD Art. 7 — consentimento explícito)
                 const consentMsg = `Prazer, ${customerName}! 😊 Posso te enviar novidades e ofertas exclusivas do restaurante pelo WhatsApp?\n\nResponda SIM para aceitar ou NAO se preferir não receber.`;
-                await whatsappProvider.sendMessage(phoneE164, consentMsg);
+                await whatsappProvider.sendMessage(phoneE164, consentMsg, waCredentials);
                 await saveConversationReply(customer.restaurantId, customer.id, phoneE164, consentMsg, "marketing_consent_request");
                 console.log(
                   `[Webhook:WhatsApp] Name="${customerName}" saved, consent requested: customer=${customer.id}`
@@ -359,12 +384,13 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
             // Capture values for the closure
             const capturedCustomer = { ...customer };
             const capturedPhone = phoneE164;
+            const capturedCredentials = waCredentials;
 
             // Schedule reply after delay
             const timer = setTimeout(async () => {
               replyTimers.delete(customerId);
               try {
-                await processAIReply(capturedCustomer, capturedPhone);
+                await processAIReply(capturedCustomer, capturedPhone, capturedCredentials);
               } catch (err) {
                 console.error(
                   `[Webhook:WhatsApp] Debounced reply error: customer=${customerId}`,
@@ -399,7 +425,8 @@ async function processAIReply(
     marketingNudgeSentAt: Date | null;
     marketingOptInAt: Date | null;
   },
-  phoneE164: string
+  phoneE164: string,
+  credentials?: WhatsAppCredentials
 ) {
   // Re-fetch customer to get latest state (may have changed during debounce)
   const freshCustomer = await prisma.customer.findUnique({
@@ -540,7 +567,17 @@ async function processAIReply(
 
   // --- Send reply ---
   const replyText = classification.replyMessage;
-  const sendResult = await whatsappProvider.sendMessage(phoneE164, replyText);
+
+  // If no explicit credentials, try to load per-restaurant credentials
+  let replyCredentials = credentials;
+  if (!replyCredentials && restaurant?.waAccessToken && restaurant?.waPhoneNumberId) {
+    replyCredentials = {
+      accessToken: restaurant.waAccessToken,
+      phoneNumberId: restaurant.waPhoneNumberId,
+    };
+  }
+
+  const sendResult = await whatsappProvider.sendMessage(phoneE164, replyText, replyCredentials);
 
   if (sendResult.success) {
     const updateData: Record<string, unknown> = {};

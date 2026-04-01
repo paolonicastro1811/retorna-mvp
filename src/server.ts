@@ -20,6 +20,7 @@ import { runLifecycleRefresh } from "./jobs/lifecycleRefresh.job";
 import { runPostVisitConsent } from "./jobs/postVisitConsent.job";
 import { runDailyAutomation } from "./services/loyalty.service";
 import { liveStatsRouter } from "./routes/liveStats.routes";
+import whatsappConnectRouter from "./routes/whatsapp-connect.routes";
 import { prisma } from "./database/client";
 import { jwtAuth } from "./middleware/jwtAuth";
 import { tenantGuard } from "./middleware/tenantGuard";
@@ -138,6 +139,7 @@ app.use("/restaurants", authMiddleware, tenantGuard, reservationRouter);
 app.use("/restaurants", authMiddleware, tenantGuard, liveStatsRouter);
 app.use("/jobs", authMiddleware, jobRouter);
 app.use("/demo", authMiddleware, demoRouter);
+app.use("/whatsapp", authMiddleware, whatsappConnectRouter);
 
 // --- Cron Jobs ---
 // Lifecycle refresh: a cada hora

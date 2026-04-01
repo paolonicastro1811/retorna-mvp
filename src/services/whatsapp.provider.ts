@@ -1,16 +1,22 @@
 /**
  * WhatsApp Provider — Meta Cloud API
  *
- * In production (META_ACCESS_TOKEN + META_PHONE_NUMBER_ID set):
- *   Sends real messages via Meta Cloud API with retry on transient failures.
+ * Supports two credential modes:
  *
- * In development (env vars missing):
+ * 1. Per-restaurant (preferred): Pass accessToken + phoneNumberId to each call.
+ *    Used when restaurant has completed WhatsApp Embedded Signup.
+ *
+ * 2. Global fallback (deprecated): Uses META_ACCESS_TOKEN + META_PHONE_NUMBER_ID
+ *    from env vars. For backward compatibility only.
+ *
+ * In development (no credentials at all):
  *   Logs to console and returns a stub providerMsgId.
- *
- * Required env for production:
- *   META_ACCESS_TOKEN      — long-lived System User token from Meta Business Manager
- *   META_PHONE_NUMBER_ID   — WhatsApp phone number ID from Meta App Dashboard
  */
+
+export interface WhatsAppCredentials {
+  accessToken: string;
+  phoneNumberId: string;
+}
 
 export interface SendMessageResult {
   success: boolean;
@@ -33,30 +39,36 @@ export const whatsappProvider = {
   /**
    * sendMessage — Send a WhatsApp text message with automatic retry.
    * Retries up to 3 times on transient failures (network errors, 429, 5xx).
+   *
+   * @param phone  E.164 phone number
+   * @param body   Message text
+   * @param credentials  Per-restaurant credentials (optional, falls back to env vars)
    */
-  async sendMessage(phone: string, body: string): Promise<SendMessageResult> {
+  async sendMessage(phone: string, body: string, credentials?: WhatsAppCredentials): Promise<SendMessageResult> {
     return this._send(phone, {
       messaging_product: "whatsapp",
       to: phone,
       type: "text",
       text: { body },
-    });
+    }, credentials);
   },
 
   /**
    * sendTemplate — Send a Meta-approved HSM template message.
    * Required for business-initiated conversations (campaigns).
    *
-   * @param phone       E.164 phone number
+   * @param phone         E.164 phone number
    * @param templateName  Name of the approved template in Meta Business Manager
    * @param language      BCP-47 language code (e.g. "pt_BR")
    * @param parameters    Body parameter values in order (e.g. ["Maria"])
+   * @param credentials   Per-restaurant credentials (optional, falls back to env vars)
    */
   async sendTemplate(
     phone: string,
     templateName: string,
     language: string,
-    parameters: string[] = []
+    parameters: string[] = [],
+    credentials?: WhatsAppCredentials
   ): Promise<SendMessageResult> {
     const components: any[] = [];
     if (parameters.length > 0) {
@@ -75,15 +87,21 @@ export const whatsappProvider = {
         language: { code: language },
         ...(components.length > 0 ? { components } : {}),
       },
-    });
+    }, credentials);
   },
 
   /**
    * _send — Internal: send any payload to Meta Cloud API with retry.
+   *
+   * Credential resolution order:
+   * 1. Explicit credentials parameter (per-restaurant)
+   * 2. Global env vars META_ACCESS_TOKEN + META_PHONE_NUMBER_ID (deprecated fallback)
+   * 3. Stub mode (development — no credentials at all)
    */
-  async _send(phone: string, payload: Record<string, unknown>): Promise<SendMessageResult> {
-    const token = process.env.META_ACCESS_TOKEN ?? process.env.WHATSAPP_API_TOKEN;
-    const phoneNumberId = process.env.META_PHONE_NUMBER_ID ?? process.env.WHATSAPP_PHONE_NUMBER_ID;
+  async _send(phone: string, payload: Record<string, unknown>, credentials?: WhatsAppCredentials): Promise<SendMessageResult> {
+    // Resolve credentials: per-restaurant → global env → stub
+    const token = credentials?.accessToken ?? process.env.META_ACCESS_TOKEN ?? process.env.WHATSAPP_API_TOKEN;
+    const phoneNumberId = credentials?.phoneNumberId ?? process.env.META_PHONE_NUMBER_ID ?? process.env.WHATSAPP_PHONE_NUMBER_ID;
 
     // No credentials → stub mode (development)
     if (!token || !phoneNumberId) {

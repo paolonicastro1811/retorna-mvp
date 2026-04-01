@@ -3,7 +3,8 @@ import { messageEventRepository } from "../repositories/messageEvent.repository"
 import { campaignRepository } from "../repositories/campaign.repository";
 import { campaignAudienceItemRepository } from "../repositories/campaignAudienceItem.repository";
 import { messageTemplateRepository } from "../repositories/messageTemplate.repository";
-import { whatsappProvider } from "./whatsapp.provider";
+import { whatsappProvider, WhatsAppCredentials } from "./whatsapp.provider";
+import { prisma } from "../database/client";
 import {
   MessageStatus,
   MessageEventType,
@@ -62,10 +63,14 @@ export const messagingService = {
 
   /**
    * sendMessage — Invia un singolo messaggio via WhatsApp provider.
+   * Fetches per-restaurant WhatsApp credentials if available.
    */
   async sendMessage(messageId: string) {
     const message = await outboundMessageRepository.findById(messageId) as any;
     if (!message) throw new Error(`Message ${messageId} not found`);
+
+    // Fetch per-restaurant WhatsApp credentials
+    const credentials = await getRestaurantCredentials(message.restaurantId);
 
     // Use HSM template for campaign messages (business-initiated), plain text for others
     const result = message.hsmTemplateName
@@ -73,9 +78,10 @@ export const messagingService = {
           message.phone,
           message.hsmTemplateName,
           message.hsmLanguage ?? "pt_BR",
-          extractTemplateParams(message.body)
+          extractTemplateParams(message.body),
+          credentials
         )
-      : await whatsappProvider.sendMessage(message.phone, message.body);
+      : await whatsappProvider.sendMessage(message.phone, message.body, credentials);
 
     if (result.success) {
       await outboundMessageRepository.updateStatus(messageId, MessageStatus.SENT, {
@@ -187,6 +193,26 @@ function interpolateTemplate(
  * extractTemplateParams — Extracts parameter values from interpolated body
  * for HSM template. Returns customer name (first interpolated value).
  */
+/**
+ * getRestaurantCredentials — Fetch per-restaurant WhatsApp credentials.
+ * Returns undefined if not configured (falls back to global env vars in provider).
+ */
+async function getRestaurantCredentials(restaurantId: string): Promise<WhatsAppCredentials | undefined> {
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { waAccessToken: true, waPhoneNumberId: true },
+  });
+
+  if (restaurant?.waAccessToken && restaurant?.waPhoneNumberId) {
+    return {
+      accessToken: restaurant.waAccessToken,
+      phoneNumberId: restaurant.waPhoneNumberId,
+    };
+  }
+
+  return undefined;
+}
+
 function extractTemplateParams(body: string): string[] {
   // The body is already interpolated; extract the name before LGPD footer
   const withoutFooter = body.replace(LGPD_MESSAGE_FOOTER, "").trim();

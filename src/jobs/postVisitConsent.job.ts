@@ -6,7 +6,7 @@
 // ============================================================
 
 import { prisma } from "../database/client";
-import { whatsappProvider } from "../services/whatsapp.provider";
+import { whatsappProvider, WhatsAppCredentials } from "../services/whatsapp.provider";
 
 export async function runPostVisitConsent(): Promise<{ sent: number; errors: number }> {
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
@@ -27,7 +27,13 @@ export async function runPostVisitConsent(): Promise<{ sent: number; errors: num
       },
     },
     include: {
-      customer: { select: { id: true, phone: true, name: true, restaurantId: true } },
+      customer: {
+        include: {
+          restaurant: {
+            select: { waAccessToken: true, waPhoneNumberId: true },
+          },
+        },
+      },
     },
     distinct: ["customerId"], // one message per customer even with multiple visits
   });
@@ -40,11 +46,18 @@ export async function runPostVisitConsent(): Promise<{ sent: number; errors: num
     const name = customer.name ?? "Cliente";
 
     try {
+      // Build per-restaurant WhatsApp credentials
+      const waCredentials: WhatsAppCredentials | undefined =
+        customer.restaurant?.waAccessToken && customer.restaurant?.waPhoneNumberId
+          ? { accessToken: customer.restaurant.waAccessToken, phoneNumberId: customer.restaurant.waPhoneNumberId }
+          : undefined;
+
       const result = await whatsappProvider.sendTemplate(
         customer.phone,
         "post_visit_consent_v1",
         "pt_BR",
-        [name]
+        [name],
+        waCredentials
       );
 
       // Mark customer as having received the welcome message

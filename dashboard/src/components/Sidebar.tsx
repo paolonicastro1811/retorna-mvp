@@ -1,8 +1,14 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAuth, useRestaurantId } from '../contexts/AuthContext'
 import { WhatsAppIcon } from './icons'
+
+interface WhatsAppStatus {
+  connected: boolean
+  phoneNumber?: string
+  connectedAt?: string
+}
 
 /*
  * COLOR SCHEME (for future refactoring to Tailwind theme tokens):
@@ -66,6 +72,7 @@ export function Sidebar() {
   const restaurantId = useRestaurantId()
   const [plan, setPlan] = useState<string>('manual')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [waStatus, setWaStatus] = useState<WhatsAppStatus | null>(null)
 
   useEffect(() => {
     // Check localStorage first for instant render
@@ -81,6 +88,12 @@ export function Sidebar() {
       })
       .catch((err) => { console.error('Failed to fetch restaurant plan:', err) })
   }, [restaurantId])
+
+  useEffect(() => {
+    api<WhatsAppStatus>('/whatsapp/status')
+      .then(setWaStatus)
+      .catch(() => { /* WhatsApp status not available yet */ })
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -131,13 +144,23 @@ export function Sidebar() {
 
         {/* WhatsApp Business connection */}
         <div className="px-4 py-4 border-b border-white/10">
-          <button
-            className="w-full flex items-center gap-2 bg-[#25D366] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[#1DA851] transition-colors"
-            aria-label="Conectar WhatsApp Business"
+          <Link
+            to="/painel/whatsapp"
+            onClick={closeMobile}
+            className={`w-full flex items-center gap-2 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors ${
+              waStatus?.connected
+                ? 'bg-[#25D366]/20 border border-[#25D366]/40 hover:bg-[#25D366]/30'
+                : 'bg-[#25D366] hover:bg-[#1DA851]'
+            }`}
+            aria-label={waStatus?.connected ? 'WhatsApp conectado' : 'Conectar WhatsApp Business'}
           >
             <WhatsAppIcon />
-            <span>Conectar WhatsApp</span>
-          </button>
+            {waStatus?.connected ? (
+              <span className="truncate">WhatsApp &#10003;</span>
+            ) : (
+              <span>Conectar WhatsApp</span>
+            )}
+          </Link>
         </div>
 
         {/* Navigation */}

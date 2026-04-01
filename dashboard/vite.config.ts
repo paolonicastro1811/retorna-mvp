@@ -13,6 +13,7 @@ export default defineConfig({
       '/demo': 'http://localhost:3000',
       '/jobs': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
+      '/whatsapp': 'http://localhost:3000',
     },
   },
 })

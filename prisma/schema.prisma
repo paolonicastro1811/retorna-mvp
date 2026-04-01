@@ -38,6 +38,13 @@ model Restaurant {
   roomLayout             Json?  @map("room_layout") // AI-generated room shape + metadata
   avgMealDurationMinutes Int    @default(90) @map("avg_meal_duration_minutes") // Auto-complete after this many minutes
 
+  // WhatsApp Business Integration (per-restaurant via Embedded Signup)
+  wabaId          String?   @map("waba_id")            // WhatsApp Business Account ID
+  waPhoneNumberId String?   @map("wa_phone_number_id") // Phone Number ID from Meta
+  waAccessToken   String?   @map("wa_access_token")    // System User Access Token (encrypted in production)
+  waPhoneNumber   String?   @map("wa_phone_number")    // Display phone number e.g. +5511999999999
+  waConnectedAt   DateTime? @map("wa_connected_at")    // When WhatsApp was connected
+
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 

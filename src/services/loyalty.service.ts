@@ -9,7 +9,7 @@
 // ============================================================
 
 import { prisma } from "../database/client";
-import { whatsappProvider } from "./whatsapp.provider";
+import { whatsappProvider, WhatsAppCredentials } from "./whatsapp.provider";
 
 type Tier = "novo" | "frequente" | "prata" | "ouro";
 
@@ -97,6 +97,12 @@ export async function onVisitRegistered(customerId: string) {
   const phone = c.phone;
   const name = c.name ?? "Cliente";
 
+  // Build per-restaurant WhatsApp credentials
+  const waCredentials: WhatsAppCredentials | undefined =
+    r.waAccessToken && r.waPhoneNumberId
+      ? { accessToken: r.waAccessToken, phoneNumberId: r.waPhoneNumberId }
+      : undefined;
+
   // Find active templates for this restaurant
   const templates = await prisma.messageTemplate.findMany({
     where: { restaurantId: r.id, isActive: true },
@@ -115,7 +121,7 @@ export async function onVisitRegistered(customerId: string) {
     await sendAndLog(r.id, customerId, phone, "post_visit_thanks", [name, String(currentVisits), progresso], {
       visits: currentVisits,
       tier: newTier,
-    });
+    }, waCredentials);
   }
 
   // 5b. Tier upgrade
@@ -127,7 +133,7 @@ export async function onVisitRegistered(customerId: string) {
       oldTier,
       newTier,
       visits: currentVisits,
-    });
+    }, waCredentials);
   }
 
   // 5c. Reward earned (at tier threshold exact visits)
@@ -137,7 +143,7 @@ export async function onVisitRegistered(customerId: string) {
     await sendAndLog(r.id, customerId, phone, "reward_earned", [name, String(currentVisits), String(discount)], {
       visits: currentVisits,
       discount,
-    });
+    }, waCredentials);
   }
 
   // 5d. Streak reminder (if approaching target)
@@ -153,14 +159,14 @@ export async function onVisitRegistered(customerId: string) {
     await sendAndLog(r.id, customerId, phone, "streak_reminder", [name, String(newStreak), String(faltam), prazo], {
       streak: newStreak,
       target: r.streakTargetVisits,
-    });
+    }, waCredentials);
   }
 
   // 5e. Surprise reward
   if (triggerSurprise && templateMap.has("surprise_reward_v1")) {
     await sendAndLog(r.id, customerId, phone, "surprise_reward", [name], {
       visits: currentVisits,
-    });
+    }, waCredentials);
   }
 
   console.log(
@@ -206,6 +212,12 @@ export async function runDailyAutomation() {
       },
     });
 
+    // Build per-restaurant WhatsApp credentials for reactivation
+    const reactivationCredentials: WhatsAppCredentials | undefined =
+      r.waAccessToken && r.waPhoneNumberId
+        ? { accessToken: r.waAccessToken, phoneNumberId: r.waPhoneNumberId }
+        : undefined;
+
     for (const c of customers) {
       const name = c.name ?? "Cliente";
       const discount = getDiscountForTier(c.tier as Tier, r);
@@ -214,7 +226,7 @@ export async function runDailyAutomation() {
         daysSinceVisit: r.reactivationAfterDays,
         tier: c.tier,
         discount,
-      });
+      }, reactivationCredentials);
 
       if (result) {
         await prisma.customer.update({
@@ -275,14 +287,16 @@ async function sendAndLog(
   phone: string,
   templateKey: string,
   params: string[],
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
+  credentials?: WhatsAppCredentials
 ): Promise<boolean> {
   try {
     const result = await whatsappProvider.sendTemplate(
       phone,
       `${templateKey}_v1`,
       "pt_BR",
-      params
+      params,
+      credentials
     );
 
     await prisma.automationLog.create({
