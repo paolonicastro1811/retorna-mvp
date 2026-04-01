@@ -60,7 +60,7 @@ export function OnboardingPage() {
         method: 'POST',
         body: JSON.stringify({
           name: name.trim(),
-          phone: phone.trim(),
+          phone: phone.trim().startsWith('+') ? phone.trim() : `+55${phone.trim()}`,
           plan,
           email: email.trim(),
           ownerName: name.trim(),
@@ -169,8 +169,13 @@ export function OnboardingPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">WhatsApp do restaurante</label>
-              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+5511999999999"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
+              <div className="flex">
+                <div className="flex items-center gap-1.5 bg-gray-100 border border-gray-300 border-r-0 rounded-l-lg px-3 text-base text-gray-600 select-none">
+                  <span>🇧🇷</span><span>+55</span>
+                </div>
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="11999999999"
+                  className="w-full border border-gray-300 rounded-r-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
+              </div>
             </div>
             <button onClick={() => setStep(2)} disabled={!name.trim() || !phone.trim()}
               className="w-full bg-[#25D366] text-white py-3 rounded-lg font-semibold text-base hover:bg-[#1DA851] disabled:opacity-40 transition-colors mt-2">
