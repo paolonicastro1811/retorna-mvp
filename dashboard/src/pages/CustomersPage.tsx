@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { RESTAURANT_ID } from '../config'
+import { useRestaurantId } from '../contexts/AuthContext'
 import { getCustomers, updateCustomerStatus, updateLastVisitAmount } from '../api/customers'
 import { StatusBadge } from '../components/StatusBadge'
 import type { Customer } from '../types'
@@ -8,6 +8,7 @@ const formatBRL = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
 export function CustomersPage() {
+  const restaurantId = useRestaurantId()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -24,7 +25,7 @@ export function CustomersPage() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    getCustomers(RESTAURANT_ID)
+    getCustomers(restaurantId)
       .then(setCustomers)
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -42,7 +43,7 @@ export function CustomersPage() {
     setToggling(customer.id)
     setConfirmCustomer(null)
     try {
-      const updated = await updateCustomerStatus(RESTAURANT_ID, customer.id, newStatus)
+      const updated = await updateCustomerStatus(restaurantId, customer.id, newStatus)
       setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, lifecycleStatus: updated.lifecycleStatus } : c))
     } catch (e) {
       console.error(e)
@@ -64,6 +65,7 @@ export function CustomersPage() {
   }
 
   const saveEdit = async (customerId: string) => {
+    if (editingId === null) return // guard against double-save (onBlur + onKeyDown)
     const amount = parseFloat(editValue.replace(',', '.'))
     if (isNaN(amount) || amount < 0) {
       cancelEdit()
@@ -71,7 +73,7 @@ export function CustomersPage() {
     }
     setSaving(true)
     try {
-      const updated = await updateLastVisitAmount(RESTAURANT_ID, customerId, amount)
+      const updated = await updateLastVisitAmount(restaurantId, customerId, amount)
       setCustomers(prev => prev.map(c => c.id === customerId ? {
         ...c,
         lastVisitAmount: updated.lastVisitAmount,

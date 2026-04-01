@@ -12,6 +12,15 @@ import { bookingService } from "../services/booking.service";
 
 const router = Router();
 
+// Startup warning: META_APP_SECRET not configured
+if (!process.env.META_APP_SECRET) {
+  console.warn("\n" + "!".repeat(70));
+  console.warn("!!  WARNING: META_APP_SECRET is not set.                       !!");
+  console.warn("!!  Webhook signature verification is DISABLED.                !!");
+  console.warn("!!  This is acceptable in development but MUST be set in prod. !!");
+  console.warn("!".repeat(70) + "\n");
+}
+
 // ============================================================
 // Webhook Signature Verification — X-Hub-Signature-256
 // Meta signs every webhook payload with HMAC-SHA256 using the
@@ -21,8 +30,8 @@ function verifyWebhookSignature(req: Request, res: Response, next: NextFunction)
   const appSecret = process.env.META_APP_SECRET;
 
   // Skip verification in development (no secret configured)
+  // Startup warning is logged once at import time above
   if (!appSecret) {
-    console.warn("[Webhook:WhatsApp] META_APP_SECRET not set — signature verification DISABLED (dev only)");
     return next();
   }
 

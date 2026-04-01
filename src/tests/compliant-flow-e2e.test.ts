@@ -167,7 +167,7 @@ async function main() {
     const template = await prisma.messageTemplate.create({
       data: {
         restaurantId: restaurant.id,
-        name: "Reactivation Test",
+        name: "Retorna Test",
         body: "Oi {{name}}! Volte a nos visitar!",
         channel: "whatsapp",
       },
@@ -262,7 +262,7 @@ async function main() {
 
     const campaign = await campaignService.create({
       restaurantId: restaurant.id,
-      name: "Compliant Reactivation Test",
+      name: "Compliant Retorna Test",
       segmentRules: { lifecycle: ["inactive"] },
       templateId: template.id,
     });

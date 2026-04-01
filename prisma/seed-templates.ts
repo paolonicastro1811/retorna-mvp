@@ -53,7 +53,7 @@ const LOYALTY_TEMPLATES = [
     isActive: false,
   },
   {
-    name: "Reativacao",
+    name: "Retorna",
     templateKey: "reactivation",
     body: "Oi {{nome}}, faz tempo! Temos saudade 😊 Volta e ganha {{desconto}}% de desconto na proxima visita. Te esperamos!",
     hsmTemplateName: "reactivation_v1",

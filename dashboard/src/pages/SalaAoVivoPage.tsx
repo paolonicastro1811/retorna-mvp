@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { RESTAURANT_ID } from '../config'
+import { useRestaurantId } from '../contexts/AuthContext'
 import { getLiveStats } from '../api/liveStats'
 import type { LiveStats } from '../types'
 
@@ -17,13 +17,14 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export function SalaAoVivoPage() {
+  const restaurantId = useRestaurantId()
   const [stats, setStats] = useState<LiveStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   const fetchStats = async () => {
     try {
-      const data = await getLiveStats(RESTAURANT_ID)
+      const data = await getLiveStats(restaurantId)
       setStats(data)
       setLastUpdate(new Date())
     } catch (e) {

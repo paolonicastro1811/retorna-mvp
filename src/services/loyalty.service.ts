@@ -44,11 +44,14 @@ export async function onVisitRegistered(customerId: string) {
   if (!c.marketingOptInAt || c.contactableStatus !== "contactable") return;
 
   // --- 1. Calculate new tier ---
+  // The visit has already been recorded before onVisitRegistered is called,
+  // so c.totalVisits is stale (off-by-one). Use +1 to reflect the current visit.
+  const currentVisits = c.totalVisits + 1;
   const oldTier = c.tier as Tier;
   let newTier: Tier = "novo";
-  if (c.totalVisits >= r.tierOuroMinVisits) newTier = "ouro";
-  else if (c.totalVisits >= r.tierPrataMinVisits) newTier = "prata";
-  else if (c.totalVisits >= r.tierFrequenteMinVisits) newTier = "frequente";
+  if (currentVisits >= r.tierOuroMinVisits) newTier = "ouro";
+  else if (currentVisits >= r.tierPrataMinVisits) newTier = "prata";
+  else if (currentVisits >= r.tierFrequenteMinVisits) newTier = "frequente";
 
   const tierChanged = TIER_ORDER.indexOf(newTier) > TIER_ORDER.indexOf(oldTier);
 
@@ -104,13 +107,13 @@ export async function onVisitRegistered(customerId: string) {
   if (templateMap.has("post_visit_thanks_v1")) {
     const discount = getDiscountForTier(newTier, r);
     const nextTier = getNextTier(newTier);
-    const visitsToNext = nextTier ? getVisitsForTier(nextTier, r) - c.totalVisits : 0;
+    const visitsToNext = nextTier ? getVisitsForTier(nextTier, r) - currentVisits : 0;
     const progresso = nextTier
       ? `Faltam ${visitsToNext} visitas para o nivel ${TIER_NAMES_PT[nextTier]} ${TIER_EMOJI[nextTier]}`
       : `Voce ja e nivel maximo: Ouro ${TIER_EMOJI.ouro}`;
 
-    await sendAndLog(r.id, customerId, phone, "post_visit_thanks", [name, String(c.totalVisits), progresso], {
-      visits: c.totalVisits,
+    await sendAndLog(r.id, customerId, phone, "post_visit_thanks", [name, String(currentVisits), progresso], {
+      visits: currentVisits,
       tier: newTier,
     });
   }
@@ -123,16 +126,16 @@ export async function onVisitRegistered(customerId: string) {
     await sendAndLog(r.id, customerId, phone, "tier_upgrade", [name, TIER_EMOJI[newTier], TIER_NAMES_PT[newTier], beneficios], {
       oldTier,
       newTier,
-      visits: c.totalVisits,
+      visits: currentVisits,
     });
   }
 
   // 5c. Reward earned (at tier threshold exact visits)
   const thresholds = [r.tierFrequenteMinVisits, r.tierPrataMinVisits, r.tierOuroMinVisits];
-  if (thresholds.includes(c.totalVisits) && templateMap.has("reward_earned_v1")) {
+  if (thresholds.includes(currentVisits) && templateMap.has("reward_earned_v1")) {
     const discount = getDiscountForTier(newTier, r);
-    await sendAndLog(r.id, customerId, phone, "reward_earned", [name, String(c.totalVisits), String(discount)], {
-      visits: c.totalVisits,
+    await sendAndLog(r.id, customerId, phone, "reward_earned", [name, String(currentVisits), String(discount)], {
+      visits: currentVisits,
       discount,
     });
   }
@@ -156,12 +159,12 @@ export async function onVisitRegistered(customerId: string) {
   // 5e. Surprise reward
   if (triggerSurprise && templateMap.has("surprise_reward_v1")) {
     await sendAndLog(r.id, customerId, phone, "surprise_reward", [name], {
-      visits: c.totalVisits,
+      visits: currentVisits,
     });
   }
 
   console.log(
-    `[Loyalty] Visit processed: customer=${customerId} visits=${c.totalVisits} tier=${oldTier}→${newTier} streak=${newStreak} surprise=${triggerSurprise}`
+    `[Loyalty] Visit processed: customer=${customerId} visits=${currentVisits} tier=${oldTier}→${newTier} streak=${newStreak} surprise=${triggerSurprise}`
   );
 }
 

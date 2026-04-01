@@ -92,3 +92,9 @@ export function useAuth(): AuthContextType {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
+
+/** Returns the current restaurantId — reactive to AuthContext, falls back to localStorage */
+export function useRestaurantId(): string {
+  const { user } = useAuth()
+  return user?.restaurantId || localStorage.getItem('restaurantId') || ''
+}

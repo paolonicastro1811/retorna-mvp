@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { RESTAURANT_ID } from '../config'
+import { useRestaurantId } from '../contexts/AuthContext'
 import { api } from '../api/client'
 
 interface TableData {
@@ -35,6 +35,7 @@ function getTableColor(seats: number): string {
 }
 
 export function TableMapEditor() {
+  const restaurantId = useRestaurantId()
   const [tables, setTables] = useState<TableData[]>([])
   const [roomLayout, setRoomLayout] = useState<RoomLayout | null>(null)
   const [loading, setLoading] = useState(true)
@@ -62,8 +63,8 @@ export function TableMapEditor() {
 
   useEffect(() => {
     Promise.all([
-      api<TableData[]>(`/restaurants/${RESTAURANT_ID}/tables`),
-      api<{ used: number; limit: number; remaining: number }>(`/restaurants/${RESTAURANT_ID}/tables/generate-usage`),
+      api<TableData[]>(`/restaurants/${restaurantId}/tables`),
+      api<{ used: number; limit: number; remaining: number }>(`/restaurants/${restaurantId}/tables/generate-usage`),
     ])
       .then(([t, usage]) => {
         setTables(t)
@@ -83,7 +84,7 @@ export function TableMapEditor() {
     setGenerating(true)
     try {
       const result = await api<GenerateResponse>(
-        `/restaurants/${RESTAURANT_ID}/tables/generate`,
+        `/restaurants/${restaurantId}/tables/generate`,
         { method: 'POST', body: JSON.stringify({ description: desc }) }
       )
       setTables(result.tables)
@@ -129,7 +130,7 @@ export function TableMapEditor() {
     setDragging(null)
     if (!table) return
     try {
-      await api(`/restaurants/${RESTAURANT_ID}/tables/${table.id}`, {
+      await api(`/restaurants/${restaurantId}/tables/${table.id}`, {
         method: 'PATCH', body: JSON.stringify({ posX: table.posX, posY: table.posY }),
       })
     } catch (err) { console.error('Failed to save position:', err) }
@@ -138,7 +139,7 @@ export function TableMapEditor() {
   // ── Add table ──
   const handleAddTable = async (posX: number, posY: number) => {
     try {
-      const newTable = await api<TableData>(`/restaurants/${RESTAURANT_ID}/tables/single`, {
+      const newTable = await api<TableData>(`/restaurants/${restaurantId}/tables/single`, {
         method: 'POST',
         body: JSON.stringify({ seats: 4, posX, posY, width: 10, height: 10 }),
       })
@@ -176,7 +177,7 @@ export function TableMapEditor() {
     if (!table) return
     setSaving(true)
     try {
-      await api<TableData>(`/restaurants/${RESTAURANT_ID}/tables/${editingTable}`, {
+      await api<TableData>(`/restaurants/${restaurantId}/tables/${editingTable}`, {
         method: 'PATCH',
         body: JSON.stringify({
           seats: table.seats,
@@ -191,7 +192,7 @@ export function TableMapEditor() {
 
   const handleDeleteTable = async (tableId: string) => {
     try {
-      await api(`/restaurants/${RESTAURANT_ID}/tables/${tableId}`, { method: 'DELETE' })
+      await api(`/restaurants/${restaurantId}/tables/${tableId}`, { method: 'DELETE' })
       setTables(prev => prev.filter(t => t.id !== tableId))
       setEditingTable(null)
     } catch (err) { console.error(err) }
@@ -199,7 +200,7 @@ export function TableMapEditor() {
 
   const handleDuplicateTable = async (table: TableData) => {
     try {
-      const newTable = await api<TableData>(`/restaurants/${RESTAURANT_ID}/tables/single`, {
+      const newTable = await api<TableData>(`/restaurants/${restaurantId}/tables/single`, {
         method: 'POST',
         body: JSON.stringify({
           seats: table.seats,
@@ -245,7 +246,7 @@ export function TableMapEditor() {
             onClick={async () => {
               if (!confirm('Tem certeza que deseja remover todas as mesas?')) return
               try {
-                await api(`/restaurants/${RESTAURANT_ID}/tables`, { method: 'DELETE' })
+                await api(`/restaurants/${restaurantId}/tables`, { method: 'DELETE' })
                 setTables([])
                 setRoomLayout(null)
                 setEditingTable(null)

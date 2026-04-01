@@ -31,6 +31,6 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   // Handle 204 No Content (e.g. DELETE)
-  if (res.status === 204) return undefined as T
+  if (res.status === 204) return undefined as unknown as T
   return res.json()
 }

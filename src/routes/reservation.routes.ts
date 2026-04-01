@@ -135,9 +135,9 @@ router.patch("/:restaurantId/reservations/:reservationId", async (req: Request, 
     if (status !== undefined) {
       data.status = status;
       // Record timestamp when customer sits down
-      if (status === "seated") data.seatedAt = new Date();
-      // Clear seatedAt if reverting from seated
-      if (status !== "seated") data.seatedAt = null;
+      if (status === "seated") { data.seatedAt = new Date(); }
+      else if (status && status !== "seated") { data.seatedAt = null; }
+      // Don't touch seatedAt if status is not provided
     }
     if (tableId !== undefined) data.tableId = tableId || null;
     if (time !== undefined) data.time = time;

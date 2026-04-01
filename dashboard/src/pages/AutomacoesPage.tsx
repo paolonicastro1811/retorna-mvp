@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { RESTAURANT_ID } from '../config'
+import { useRestaurantId } from '../contexts/AuthContext'
 import { api } from '../api/client'
 
 interface AutomationSummary {
@@ -40,7 +40,7 @@ const TEMPLATE_LABELS: Record<string, { label: string; emoji: string; color: str
   reward_earned: { label: 'Recompensa desbloqueada', emoji: '🎉', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
   streak_reminder: { label: 'Lembrete de sequencia', emoji: '🔥', color: 'bg-orange-50 text-orange-700 border-orange-200' },
   surprise_reward: { label: 'Recompensa surpresa', emoji: '🎁', color: 'bg-pink-50 text-pink-700 border-pink-200' },
-  reactivation: { label: 'Reativacao', emoji: '💚', color: 'bg-green-50 text-green-700 border-green-200' },
+  reactivation: { label: 'Retorna', emoji: '💚', color: 'bg-green-50 text-green-700 border-green-200' },
   welcome_consent: { label: 'Boas-vindas', emoji: '👋', color: 'bg-gray-50 text-gray-700 border-gray-200' },
 }
 
@@ -52,11 +52,12 @@ const TIER_CONFIG: Record<string, { label: string; emoji: string; color: string 
 }
 
 export function AutomacoesPage() {
+  const restaurantId = useRestaurantId()
   const [stats, setStats] = useState<AutomationStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api<AutomationStats>(`/restaurants/${RESTAURANT_ID}/automation-stats`)
+    api<AutomationStats>(`/restaurants/${restaurantId}/automation-stats`)
       .then(setStats)
       .catch(console.error)
       .finally(() => setLoading(false))

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { RESTAURANT_ID } from '../config'
+import { useRestaurantId } from '../contexts/AuthContext'
 import { api } from '../api/client'
 
 interface Table { id: string; tableNumber: number; seats: number; isActive: boolean; posX: number | null; posY: number | null; width: number | null; height: number | null; label: string | null }
@@ -76,6 +76,7 @@ function getNowInRestaurantTz(): { hours: number; minutes: number; dateStr: stri
 }
 
 export function BookingLeadsPage() {
+  const restaurantId = useRestaurantId()
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [tables, setTables] = useState<Table[]>([])
@@ -121,15 +122,15 @@ export function BookingLeadsPage() {
 
   const fetchReservations = useCallback(async () => {
     try {
-      const data = await api<Reservation[]>(`/restaurants/${RESTAURANT_ID}/reservations?date=${dateStr}`)
+      const data = await api<Reservation[]>(`/restaurants/${restaurantId}/reservations?date=${dateStr}`)
       setReservations(data)
     } catch { setReservations([]) }
   }, [dateStr])
 
   useEffect(() => {
     Promise.all([
-      api<Table[]>(`/restaurants/${RESTAURANT_ID}/tables`),
-      api<Hour[]>(`/restaurants/${RESTAURANT_ID}/hours`),
+      api<Table[]>(`/restaurants/${restaurantId}/tables`),
+      api<Hour[]>(`/restaurants/${restaurantId}/hours`),
     ]).then(([t, h]) => {
       setTables(t)
       setHours(h)
@@ -169,24 +170,24 @@ export function BookingLeadsPage() {
   const handleStatusChange = async (id: string, newStatus: string) => {
     setActionLoading(true); setError(null)
     try {
-      await api(`/restaurants/${RESTAURANT_ID}/reservations/${id}`, {
+      await api(`/restaurants/${restaurantId}/reservations/${id}`, {
         method: 'PATCH', body: JSON.stringify({ status: newStatus }),
       })
       setEditId(null)
       setSuccess(`Status: ${STATUS_MAP[newStatus]?.label || newStatus}`)
       await fetchReservations()
-    } catch (e: any) { setError(e.message || 'Erro') }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Erro') }
     finally { setActionLoading(false) }
   }
 
   const handleDelete = async (id: string) => {
     setActionLoading(true); setError(null)
     try {
-      await api(`/restaurants/${RESTAURANT_ID}/reservations/${id}`, { method: 'DELETE' })
+      await api(`/restaurants/${restaurantId}/reservations/${id}`, { method: 'DELETE' })
       setDeleteConfirm(null); setEditId(null)
       setSuccess('Reserva excluida')
       await fetchReservations()
-    } catch (e: any) { setError(e.message || 'Erro') }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Erro') }
     finally { setActionLoading(false) }
   }
 
@@ -464,7 +465,7 @@ export function BookingLeadsPage() {
                                   e.stopPropagation()
                                   setSlotSaving(true); setError(null)
                                   try {
-                                    await api(`/restaurants/${RESTAURANT_ID}/reservations`, {
+                                    await api(`/restaurants/${restaurantId}/reservations`, {
                                       method: 'POST',
                                       body: JSON.stringify({
                                         customerName: slotName.trim() || null,
@@ -480,8 +481,8 @@ export function BookingLeadsPage() {
                                     setSlotEditing(null)
                                     setSuccess('Reserva criada!')
                                     await fetchReservations()
-                                  } catch (err: any) {
-                                    setError(err.message || 'Erro ao criar reserva')
+                                  } catch (err: unknown) {
+                                    setError(err instanceof Error ? err.message : 'Erro ao criar reserva')
                                   } finally { setSlotSaving(false) }
                                 }}
                                 className="w-full bg-[#25D366] text-white py-1 rounded text-[10px] font-semibold hover:bg-[#1DA851] disabled:opacity-50 transition-colors"

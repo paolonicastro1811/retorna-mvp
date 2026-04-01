@@ -22,8 +22,9 @@ export function LoginPage() {
         body: JSON.stringify({ email: email.trim() }),
       })
       setSent(true)
-    } catch (err: any) {
-      if (err.message?.includes('404') || err.message?.includes('nao cadastrado')) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : ''
+      if (message.includes('404') || message.includes('nao cadastrado')) {
         setError('Email nao encontrado. Verifique ou crie uma conta.')
       } else {
         setError('Erro ao enviar o link. Tente novamente.')

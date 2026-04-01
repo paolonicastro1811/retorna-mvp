@@ -25,6 +25,7 @@ export function OnboardingPage() {
   const [plan, setPlan] = useState<'manual' | 'automatic' | ''>('')
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Plan B fields
   const [tableRows, setTableRows] = useState<TableRow[]>([{ seats: 2, qty: 2 }, { seats: 4, qty: 2 }])
@@ -48,6 +49,7 @@ export function OnboardingPage() {
   const handleSubmit = async () => {
     if (!name.trim() || !phone.trim() || !plan || !email.trim()) return
     setSubmitting(true)
+    setError(null)
     try {
       const res = await api<{
         id: string
@@ -111,6 +113,7 @@ export function OnboardingPage() {
       setDone(true)
     } catch (e) {
       console.error(e)
+      setError('Erro ao ativar restaurante. Tente novamente.')
     } finally {
       setSubmitting(false)
     }
@@ -301,6 +304,12 @@ export function OnboardingPage() {
               ))}
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
+                {error}
+              </div>
+            )}
+
             <div className="flex gap-3 mt-2">
               <button onClick={() => setStep(3)}
                 className="flex-1 border border-gray-300 text-[#2d2d3a] py-2 rounded-lg font-semibold text-xs hover:bg-gray-50">
@@ -326,6 +335,12 @@ export function OnboardingPage() {
                 <li>4. Voce registra visitas e gastos manualmente</li>
               </ul>
             </div>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
+                {error}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button onClick={() => setStep(2)}
                 className="flex-1 border border-gray-300 text-[#2d2d3a] py-2 rounded-lg font-semibold text-xs hover:bg-gray-50">

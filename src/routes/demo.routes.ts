@@ -160,7 +160,7 @@ router.post("/run-campaign", async (req: Request, res: Response) => {
     template = await prisma.messageTemplate.create({
       data: {
         restaurantId,
-        name: "Reactivation Default",
+        name: "Retorna Default",
         body: "Oi {{name}}! Sentimos sua falta. Volte a nos visitar e ganhe um desconto especial!",
         channel: "whatsapp",
       },
@@ -208,7 +208,7 @@ router.post("/run-campaign", async (req: Request, res: Response) => {
   // 4. Crea campagna
   const campaign = await campaignService.create({
     restaurantId,
-    name: `Reactivation ${new Date().toISOString().slice(0, 10)}`,
+    name: `Retorna ${new Date().toISOString().slice(0, 10)}`,
     segmentRules: { lifecycle: ["inactive"] },
     templateId: template.id,
   });

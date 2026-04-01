@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { RESTAURANT_ID } from '../config'
+import { useRestaurantId } from '../contexts/AuthContext'
 import { api } from '../api/client'
 import { TableMapEditor } from '../components/TableMapEditor'
 
@@ -84,6 +84,7 @@ const PLANS = [
 ]
 
 export function SettingsPage() {
+  const restaurantId = useRestaurantId()
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -126,9 +127,9 @@ export function SettingsPage() {
 
   useEffect(() => {
     Promise.all([
-      api<Restaurant>(`/restaurants/${RESTAURANT_ID}`),
-      api<Hour[]>(`/restaurants/${RESTAURANT_ID}/hours`),
-      api<MessageTemplate[]>(`/restaurants/${RESTAURANT_ID}/templates`),
+      api<Restaurant>(`/restaurants/${restaurantId}`),
+      api<Hour[]>(`/restaurants/${restaurantId}/hours`),
+      api<MessageTemplate[]>(`/restaurants/${restaurantId}/templates`),
     ]).then(([r, h, tpls]) => {
       setRestaurant(r)
       setName(r.name)
@@ -168,7 +169,7 @@ export function SettingsPage() {
     setSaving(true)
     setSaved(false)
     try {
-      await api(`/restaurants/${RESTAURANT_ID}`, {
+      await api(`/restaurants/${restaurantId}`, {
         method: 'PUT',
         body: JSON.stringify({ name: name.trim(), phone: phone.trim() || undefined, timezone: timezone.trim() }),
       })
@@ -183,7 +184,7 @@ export function SettingsPage() {
     try {
       // Save hours + meal duration in parallel
       const [result] = await Promise.all([
-        api<Hour[]>(`/restaurants/${RESTAURANT_ID}/hours`, {
+        api<Hour[]>(`/restaurants/${restaurantId}/hours`, {
           method: 'POST',
           body: JSON.stringify({
             hours: editHours.map(h => ({
@@ -194,7 +195,7 @@ export function SettingsPage() {
             })),
           }),
         }),
-        api(`/restaurants/${RESTAURANT_ID}`, {
+        api(`/restaurants/${restaurantId}`, {
           method: 'PUT',
           body: JSON.stringify({ avgMealDurationMinutes: mealDuration }),
         }),
@@ -209,7 +210,7 @@ export function SettingsPage() {
     if (restaurant?.plan === newPlan) return
     setChangingPlan(true)
     try {
-      const updated = await api<Restaurant>(`/restaurants/${RESTAURANT_ID}`, {
+      const updated = await api<Restaurant>(`/restaurants/${restaurantId}`, {
         method: 'PUT',
         body: JSON.stringify({ plan: newPlan }),
       })
@@ -223,7 +224,7 @@ export function SettingsPage() {
   const handleToggleTemplate = async (tplId: string, currentActive: boolean) => {
     setTogglingTpl(tplId)
     try {
-      await api(`/restaurants/${RESTAURANT_ID}/templates/${tplId}`, {
+      await api(`/restaurants/${restaurantId}/templates/${tplId}`, {
         method: 'PATCH',
         body: JSON.stringify({ isActive: !currentActive }),
       })
@@ -236,7 +237,7 @@ export function SettingsPage() {
     setSavingLoyalty(true)
     setSavedLoyalty(false)
     try {
-      await api(`/restaurants/${RESTAURANT_ID}`, {
+      await api(`/restaurants/${restaurantId}`, {
         method: 'PUT',
         body: JSON.stringify(loyaltyConfig),
       })
@@ -339,7 +340,7 @@ export function SettingsPage() {
           {/* Extra config */}
           <div className="grid grid-cols-2 gap-3 mt-3">
             <div>
-              <label className="text-[9px] text-gray-500">Reativacao apos (dias sem visita)</label>
+              <label className="text-[9px] text-gray-500">Retorna apos (dias sem visita)</label>
               <input type="number" min="7" value={loyaltyConfig.reactivationAfterDays}
                 onChange={e => setLoyaltyConfig({ ...loyaltyConfig, reactivationAfterDays: Math.max(7, parseInt(e.target.value) || 30) })}
                 className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#25D366]" />

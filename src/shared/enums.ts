@@ -1,5 +1,5 @@
 // ============================================================
-// Enums e costanti condivise — Reactivation MVP
+// Enums e costanti condivise — Retorna
 // ============================================================
 
 // --- Event Types (solo "visit" per MVP) ---

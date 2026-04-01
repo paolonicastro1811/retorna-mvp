@@ -1,5 +1,5 @@
 /**
- * E2E Test — Flusso core completo Reactivation MVP
+ * E2E Test — Flusso core completo Retorna
  *
  * Usa embedded-postgres per un test completamente self-contained.
  * Esegue: seed → visits → lifecycle → campaign → dispatch → new visit → attribution → ROI
@@ -243,7 +243,7 @@ async function main() {
     const template = await prisma.messageTemplate.create({
       data: {
         restaurantId: restaurant.id,
-        name: "Reactivation V1",
+        name: "Retorna V1",
         body: "Oi {{name}}! Sentimos sua falta na Churrascaria Fogo Vivo. Volte e ganhe 10% de desconto!",
         channel: "whatsapp",
       },
@@ -259,7 +259,7 @@ async function main() {
 
     const campaign = await campaignService.create({
       restaurantId: restaurant.id,
-      name: "Reactivation Marzo 2026",
+      name: "Retorna Marzo 2026",
       segmentRules: { lifecycle: ["inactive"] },
       templateId: template.id,
     });

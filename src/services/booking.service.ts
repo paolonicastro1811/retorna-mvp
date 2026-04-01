@@ -82,7 +82,7 @@ export const bookingService = {
     dateStr: string,
     partySize: number = 2
   ): Promise<AvailabilityResult> {
-    const date = new Date(dateStr + "T00:00:00");
+    const date = new Date(dateStr + "T00:00:00Z");
     const dayOfWeek = date.getDay();
     const dayName = DAY_NAMES_PT[dayOfWeek];
 

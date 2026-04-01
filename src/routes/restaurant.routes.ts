@@ -5,6 +5,8 @@ import { param } from "../shared/params";
 import { prisma } from "../database/client";
 import { generateLayout } from "../services/layoutGenerator.service";
 import { signJwt } from "../middleware/jwtAuth";
+import { validate } from "../middleware/validate";
+import { createRestaurantSchema } from "../schemas";
 
 const router = Router();
 
@@ -19,7 +21,7 @@ router.get("/:id", async (req: Request, res: Response) => {
   res.json(restaurant);
 });
 
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", validate(createRestaurantSchema), async (req: Request, res: Response) => {
   const { name, phone, timezone, plan, email, ownerName } = req.body;
   if (!name) return res.status(400).json({ error: "name is required" });
   const restaurant = await restaurantRepository.create({
@@ -171,8 +173,8 @@ router.post("/:restaurantId/tables/single", async (req: Request, res: Response) 
       tableNumber: nextNumber,
       seats: Number(seats) || 4,
       label: label || null,
-      posX: Number(posX) ?? 50,
-      posY: Number(posY) ?? 50,
+      posX: isNaN(Number(posX)) ? 50 : Number(posX),
+      posY: isNaN(Number(posY)) ? 50 : Number(posY),
       width: Number(width) || 10,
       height: Number(height) || 10,
     },

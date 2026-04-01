@@ -22,6 +22,7 @@ import { runDailyAutomation } from "./services/loyalty.service";
 import { liveStatsRouter } from "./routes/liveStats.routes";
 import { prisma } from "./database/client";
 import { jwtAuth } from "./middleware/jwtAuth";
+import { tenantGuard } from "./middleware/tenantGuard";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,7 +36,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
 const API_KEY = process.env.API_KEY; // optional: set in .env to enable auth
 function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
   if (!API_KEY) return next(); // auth disabled if no key set
-  const key = req.headers["x-api-key"] || req.query.apiKey;
+  const key = req.headers["x-api-key"];
   if (key === API_KEY) return next();
   res.status(401).json({ error: "Unauthorized — invalid or missing API key" });
 }
@@ -100,20 +101,41 @@ app.get("/health", (_req, res) => {
 // --- Helmet (after webhooks — not needed for Meta server-to-server calls) ---
 app.use(helmet());
 
+// --- Onboarding rate limiter (stricter for public endpoint) ---
+const onboardingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,                   // max 10 restaurant creations per IP per 15min
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests — try again later" },
+});
+
 // --- Routes (protected by JWT or API key + rate limited) ---
 // Onboarding: POST /restaurants is public (creates restaurant + user + JWT)
 app.use("/restaurants", apiLimiter, (req: Request, res: Response, next: NextFunction) => {
-  // Allow POST /restaurants without auth (onboarding)
-  if (req.method === "POST" && req.path === "/") return next();
-  // Everything else requires auth
-  return authMiddleware(req, res, next);
+  // Allow POST /restaurants without auth (onboarding) — with validation
+  if (req.method === "POST" && req.path === "/") {
+    const { name, email } = req.body;
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ error: "name is required" });
+    }
+    if (!email || typeof email !== "string" || !email.trim()) {
+      return res.status(400).json({ error: "email is required" });
+    }
+    return onboardingLimiter(req, res, next);
+  }
+  // Everything else requires auth + tenant isolation
+  return authMiddleware(req, res, (err?: any) => {
+    if (err) return next(err);
+    return tenantGuard(req, res, next);
+  });
 }, restaurantRouter);
-app.use("/restaurants", authMiddleware, customerRouter);
-app.use("/restaurants", authMiddleware, customerEventRouter);
-app.use("/restaurants", authMiddleware, campaignRouter);
-app.use("/restaurants", authMiddleware, attributionRouter);
-app.use("/restaurants", authMiddleware, reservationRouter);
-app.use("/restaurants", authMiddleware, liveStatsRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, customerRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, customerEventRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, campaignRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, attributionRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, reservationRouter);
+app.use("/restaurants", authMiddleware, tenantGuard, liveStatsRouter);
 app.use("/jobs", authMiddleware, jobRouter);
 app.use("/demo", authMiddleware, demoRouter);
 
@@ -180,7 +202,7 @@ cron.schedule("0 10 * * *", async () => {
 });
 
 // --- Manual trigger for loyalty automation (for testing) ---
-app.post("/jobs/loyalty-automation", async (_req, res) => {
+app.post("/jobs/loyalty-automation", authMiddleware, async (_req, res) => {
   try {
     const result = await runDailyAutomation();
     res.json(result);
@@ -197,7 +219,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 // --- Start ---
 app.listen(PORT, () => {
-  console.log(`[Server] Reactivation MVP running on port ${PORT}`);
+  console.log(`[Server] Retorna running on port ${PORT}`);
   console.log(`[Server] CORS: ${ALLOWED_ORIGINS.join(", ")}`);
   console.log(`[Server] Auth: JWT (Magic Link) + ${API_KEY ? "API key fallback" : "no API key (set API_KEY for server-to-server)"}`);
 });

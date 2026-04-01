@@ -1,37 +1,20 @@
 /**
- * EmailService — Envia emails via SMTP (nodemailer).
+ * EmailService — Envia emails via Resend (resend.com).
  *
- * Em desenvolvimento (sem SMTP configurado):
+ * Em desenvolvimento (sem RESEND_API_KEY):
  *   Loga o magic link no console.
  *
- * Em producao (SMTP_HOST + SMTP_USER + SMTP_PASS set):
- *   Envia email real via SMTP.
+ * Em producao (RESEND_API_KEY set):
+ *   Envia email real via Resend API.
  */
 
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 const APP_URL = process.env.APP_URL || "http://localhost:5173";
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const SMTP_FROM = process.env.SMTP_FROM || '"Reativacao" <noreply@reativacao.app>';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const EMAIL_FROM = process.env.EMAIL_FROM || "Retorna <onboarding@resend.dev>";
 
-const isSmtpConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
-
-let transporter: nodemailer.Transporter | null = null;
-
-if (isSmtpConfigured) {
-  transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
-}
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 export async function sendMagicLinkEmail(
   to: string,
@@ -42,7 +25,7 @@ export async function sendMagicLinkEmail(
   const name = restaurantName || "seu restaurante";
 
   // Development fallback: log to console
-  if (!transporter) {
+  if (!resend) {
     console.log(`\n${"=".repeat(60)}`);
     console.log(`[Magic Link] Email para: ${to}`);
     console.log(`[Magic Link] URL: ${magicLink}`);
@@ -58,7 +41,7 @@ export async function sendMagicLinkEmail(
   <div style="max-width:480px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
 
     <div style="background:#1a1a2e;padding:24px 32px;text-align:center">
-      <h1 style="color:#25D366;font-size:20px;margin:0">Reativacao</h1>
+      <h1 style="color:#25D366;font-size:20px;margin:0">Retorna</h1>
     </div>
 
     <div style="padding:32px">
@@ -92,12 +75,17 @@ export async function sendMagicLinkEmail(
 </body>
 </html>`;
 
-  await transporter.sendMail({
-    from: SMTP_FROM,
+  const { error } = await resend.emails.send({
+    from: EMAIL_FROM,
     to,
     subject: `Seu link de acesso — ${name}`,
     html,
   });
 
-  console.log(`[Email] Magic link sent to ${to}`);
+  if (error) {
+    console.error(`[Email] Erro ao enviar para ${to}:`, error);
+    throw new Error(`Falha ao enviar email: ${error.message}`);
+  }
+
+  console.log(`[Email] Magic link enviado para ${to}`);
 }

@@ -8,6 +8,15 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me-in-production";
 
+// Startup warning: default JWT secret is insecure
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "dev-secret-change-me-in-production") {
+  console.warn("\n" + "!".repeat(70));
+  console.warn("!!  WARNING: JWT_SECRET is using the default value.            !!");
+  console.warn("!!  This is INSECURE and must be changed in production.        !!");
+  console.warn("!!  Set JWT_SECRET in your .env file to a strong random value. !!");
+  console.warn("!".repeat(70) + "\n");
+}
+
 export interface JwtPayload {
   userId: string;
   email: string;

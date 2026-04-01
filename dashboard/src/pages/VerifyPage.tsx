@@ -36,11 +36,12 @@ export function VerifyPage() {
 
         // Redirect to dashboard after brief success flash
         setTimeout(() => navigate('/painel', { replace: true }), 1200)
-      } catch (err: any) {
+      } catch (err: unknown) {
         setStatus('error')
-        if (err.message?.includes('expirado')) {
+        const message = err instanceof Error ? err.message : ''
+        if (message.includes('expirado')) {
           setErrorMsg('Link expirado. Solicite um novo link de acesso.')
-        } else if (err.message?.includes('utilizado')) {
+        } else if (message.includes('utilizado')) {
           setErrorMsg('Este link ja foi utilizado. Solicite um novo.')
         } else {
           setErrorMsg('Link invalido ou expirado.')

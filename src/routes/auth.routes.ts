@@ -10,6 +10,8 @@ import crypto from "crypto";
 import { prisma } from "../database/client";
 import { signJwt } from "../middleware/jwtAuth";
 import { sendMagicLinkEmail } from "../services/email.service";
+import { validate } from "../middleware/validate";
+import { magicLinkSchema } from "../schemas";
 
 const router = Router();
 
@@ -23,7 +25,7 @@ const MAGIC_LINK_EXPIRES_MINUTES = parseInt(
  * Body: { email: string }
  * Envia um magic link para o email se o usuario existir.
  */
-router.post("/magic-link", async (req: Request, res: Response) => {
+router.post("/magic-link", validate(magicLinkSchema), async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email || typeof email !== "string") {
@@ -41,6 +43,17 @@ router.post("/magic-link", async (req: Request, res: Response) => {
   if (!user) {
     return res.status(404).json({ error: "Email nao cadastrado" });
   }
+
+  // Cleanup: delete all expired or used tokens for this email
+  await prisma.magicLinkToken.deleteMany({
+    where: {
+      email: normalizedEmail,
+      OR: [
+        { usedAt: { not: null } },
+        { expiresAt: { lt: new Date() } },
+      ],
+    },
+  });
 
   // Generate secure token
   const token = crypto.randomUUID();
