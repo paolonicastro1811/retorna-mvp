@@ -8,11 +8,11 @@ interface TableRow { seats: number; qty: number }
 const DEFAULT_HOURS = [
   { day: 'Domingo', dayOfWeek: 0, open: '11:30', close: '23:00', closed: false },
   { day: 'Segunda', dayOfWeek: 1, open: '11:30', close: '23:00', closed: true },
-  { day: 'Terca', dayOfWeek: 2, open: '11:30', close: '23:00', closed: false },
+  { day: 'Terça', dayOfWeek: 2, open: '11:30', close: '23:00', closed: false },
   { day: 'Quarta', dayOfWeek: 3, open: '11:30', close: '23:00', closed: false },
   { day: 'Quinta', dayOfWeek: 4, open: '11:30', close: '23:00', closed: false },
   { day: 'Sexta', dayOfWeek: 5, open: '11:30', close: '23:00', closed: false },
-  { day: 'Sabado', dayOfWeek: 6, open: '11:30', close: '23:00', closed: false },
+  { day: 'Sábado', dayOfWeek: 6, open: '11:30', close: '23:00', closed: false },
 ]
 
 export function OnboardingPage() {
@@ -131,7 +131,7 @@ export function OnboardingPage() {
           </div>
           <h1 className="text-2xl font-extrabold text-[#1a1a2e] mb-3">Pronto!</h1>
           <p className="text-[#6b7280] text-base mb-8">
-            Seu restaurante <strong>{name}</strong> foi cadastrado com o plano <strong>{plan === 'manual' ? 'Manual' : 'Automatico'}</strong>.
+            Seu restaurante <strong>{name}</strong> foi cadastrado com o plano <strong>{plan === 'manual' ? 'Manual' : 'Automático'}</strong>.
           </p>
           <button
             onClick={() => navigate('/painel')}
@@ -146,7 +146,7 @@ export function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-6">
-      <div className="max-w-xl w-full">
+      <div className={`w-full ${step === 2 ? 'max-w-4xl' : 'max-w-xl'} transition-all`}>
         <div className="text-center mb-8">
           <h1 className="text-2xl font-extrabold text-[#1a1a2e]">Ative seu restaurante</h1>
           <p className="text-[#6b7280] text-sm mt-2">Leva menos de 1 minuto</p>
@@ -179,7 +179,7 @@ export function OnboardingPage() {
             </div>
             <button onClick={() => setStep(2)} disabled={!name.trim() || !phone.trim() || !email.trim()}
               className="w-full bg-[#25D366] text-white py-3 rounded-lg font-semibold text-base hover:bg-[#1DA851] disabled:opacity-40 transition-colors mt-2">
-              Proximo
+              Próximo
             </button>
           </div>
         )}
@@ -204,105 +204,108 @@ export function OnboardingPage() {
               )}
             </div>
 
-            {/* Card Plano Manual */}
-            <button
-              onClick={() => setPlan('manual')}
-              className={`w-full text-left border rounded-2xl p-6 transition-all ${
-                plan === 'manual' ? 'border-[#25D366] bg-green-50 ring-2 ring-[#25D366]' : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-lg font-bold text-[#1a1a2e]">Plano Manual</span>
-                <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-semibold">Basico</span>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-[#1a1a2e]">
-                    R$ {billing === 'monthly' ? '197' : '158'}
-                  </span>
-                  <span className="text-sm text-gray-500">/mes</span>
+            {/* Cards affiancate */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card Plano Manual */}
+              <button
+                onClick={() => setPlan('manual')}
+                className={`w-full text-left border rounded-2xl p-6 transition-all flex flex-col ${
+                  plan === 'manual' ? 'border-[#25D366] bg-green-50 ring-2 ring-[#25D366]' : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-lg font-bold text-[#1a1a2e]">Plano Manual</span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-semibold">Básico</span>
                 </div>
-                {billing === 'annual' && (
-                  <p className="text-xs text-gray-400 mt-1">R$ 1.896/ano (equivale a 10 meses)</p>
-                )}
-              </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-4">
-                <p className="text-sm text-blue-700 font-semibold">30 dias gratis para testar</p>
-              </div>
-
-              <p className="text-sm font-semibold text-[#1a1a2e] mb-3">O que esta incluso:</p>
-              <ul className="space-y-2">
-                {[
-                  'Campanhas de reativacao via WhatsApp',
-                  'Registro manual de visitas e gastos',
-                  'Painel com KPIs e ROI por campanha',
-                  'Bot de atendimento inicial no WhatsApp',
-                  'Transferencia para responsavel humano',
-                  'Relatorios de clientes ativos, em risco e inativos',
-                ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                    <svg className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </button>
-
-            {/* Card Plano Automatico */}
-            <button
-              onClick={() => setPlan('automatic')}
-              className={`w-full text-left border rounded-2xl p-6 transition-all relative ${
-                plan === 'automatic' ? 'border-[#25D366] bg-green-50 ring-2 ring-[#25D366]' : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-[#25D366] text-white text-xs font-bold px-4 py-1 rounded-full">Mais popular</span>
-              </div>
-
-              <div className="flex items-center justify-between mb-4 mt-1">
-                <span className="text-lg font-bold text-[#1a1a2e]">Plano Automatico</span>
-                <span className="text-xs bg-[#25D366] text-white px-3 py-1 rounded-full font-semibold">Premium</span>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-[#1a1a2e]">
-                    R$ {billing === 'monthly' ? '397' : '317'}
-                  </span>
-                  <span className="text-sm text-gray-500">/mes</span>
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-extrabold text-[#1a1a2e]">
+                      R$ {billing === 'monthly' ? '197' : '158'}
+                    </span>
+                    <span className="text-sm text-gray-500">/mês</span>
+                  </div>
+                  {billing === 'annual' && (
+                    <p className="text-xs text-gray-400 mt-1">R$ 1.896/ano (equivale a 10 meses)</p>
+                  )}
                 </div>
-                {billing === 'annual' && (
-                  <p className="text-xs text-gray-400 mt-1">R$ 3.804/ano (equivale a 10 meses)</p>
-                )}
-              </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-4">
-                <p className="text-sm text-blue-700 font-semibold">15 dias gratis para testar</p>
-              </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-4">
+                  <p className="text-sm text-blue-700 font-semibold">30 dias grátis para testar</p>
+                </div>
 
-              <p className="text-sm font-semibold text-[#1a1a2e] mb-3">Tudo do Manual, mais:</p>
-              <ul className="space-y-2">
-                {[
-                  'Gestao automatica de reservas via WhatsApp',
-                  'Calendario inteligente com controle de mesas',
-                  'AI gerencia conversas completas sem intervencao',
-                  'Confirmacao e lembrete automatico de reservas',
-                  'Controle de capacidade em tempo real',
-                  'Relatorios avancados de ocupacao e demanda',
-                ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                    <svg className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </button>
+                <p className="text-sm font-semibold text-[#1a1a2e] mb-3">O que está incluso:</p>
+                <ul className="space-y-2 flex-1">
+                  {[
+                    'Campanhas de reativação via WhatsApp',
+                    'Registro manual de visitas e gastos',
+                    'Painel com KPIs e ROI por campanha',
+                    'Bot de atendimento inicial no WhatsApp',
+                    'Transferência para responsável humano',
+                    'Relatórios de clientes ativos, em risco e inativos',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </button>
+
+              {/* Card Plano Automático */}
+              <button
+                onClick={() => setPlan('automatic')}
+                className={`w-full text-left border rounded-2xl p-6 transition-all relative flex flex-col ${
+                  plan === 'automatic' ? 'border-[#25D366] bg-green-50 ring-2 ring-[#25D366]' : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-[#25D366] text-white text-xs font-bold px-4 py-1 rounded-full">Mais popular</span>
+                </div>
+
+                <div className="flex items-center justify-between mb-4 mt-1">
+                  <span className="text-lg font-bold text-[#1a1a2e]">Plano Automático</span>
+                  <span className="text-xs bg-[#25D366] text-white px-3 py-1 rounded-full font-semibold">Premium</span>
+                </div>
+
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-extrabold text-[#1a1a2e]">
+                      R$ {billing === 'monthly' ? '397' : '317'}
+                    </span>
+                    <span className="text-sm text-gray-500">/mês</span>
+                  </div>
+                  {billing === 'annual' && (
+                    <p className="text-xs text-gray-400 mt-1">R$ 3.804/ano (equivale a 10 meses)</p>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-4">
+                  <p className="text-sm text-blue-700 font-semibold">15 dias grátis para testar</p>
+                </div>
+
+                <p className="text-sm font-semibold text-[#1a1a2e] mb-3">Tudo do Manual, mais:</p>
+                <ul className="space-y-2 flex-1">
+                  {[
+                    'Gestão automática de reservas via WhatsApp',
+                    'Calendário inteligente com controle de mesas',
+                    'AI gerencia conversas completas sem intervenção',
+                    'Confirmação e lembrete automático de reservas',
+                    'Controle de capacidade em tempo real',
+                    'Relatórios avançados de ocupação e demanda',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </button>
+            </div>
 
             <div className="flex gap-3 mt-2">
               <button onClick={() => setStep(1)}
@@ -311,7 +314,7 @@ export function OnboardingPage() {
               </button>
               <button onClick={() => setStep(3)} disabled={!plan}
                 className="flex-1 bg-[#25D366] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-40 transition-colors">
-                Proximo
+                Próximo
               </button>
             </div>
           </div>
@@ -357,7 +360,7 @@ export function OnboardingPage() {
               </button>
               <button onClick={() => setStep(4)}
                 className="flex-1 bg-[#25D366] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#1DA851] transition-colors">
-                Proximo
+                Próximo
               </button>
             </div>
           </div>
@@ -366,7 +369,7 @@ export function OnboardingPage() {
         {/* Passo 4 (Plano B) — Horarios */}
         {step === 4 && plan === 'automatic' && (
           <div className="space-y-4">
-            <label className="block text-sm font-bold text-[#2d2d3a] mb-2">Horarios de funcionamento</label>
+            <label className="block text-sm font-bold text-[#2d2d3a] mb-2">Horários de funcionamento</label>
             <div className="space-y-2.5">
               {hours.map((h, i) => (
                 <div key={i} className="flex items-center gap-3">
@@ -415,10 +418,10 @@ export function OnboardingPage() {
             <div className="bg-green-50 border border-green-200 rounded-xl p-6">
               <h3 className="text-base font-bold text-[#1a1a2e] mb-3">O que vai acontecer:</h3>
               <ul className="text-sm text-[#6b7280] space-y-2">
-                <li>1. Seu painel sera ativado imediatamente</li>
-                <li>2. Voce conecta seu WhatsApp Business</li>
-                <li>3. O bot acolhe os clientes e passa pro responsavel</li>
-                <li>4. Voce registra visitas e gastos manualmente</li>
+                <li>1. Seu painel será ativado imediatamente</li>
+                <li>2. Você conecta seu WhatsApp Business</li>
+                <li>3. O bot acolhe os clientes e passa pro responsável</li>
+                <li>4. Você registra visitas e gastos manualmente</li>
               </ul>
             </div>
             {error && (
@@ -442,7 +445,7 @@ export function OnboardingPage() {
 
         <button onClick={() => navigate('/')}
           className="block mx-auto mt-6 text-sm text-[#6b7280] hover:text-[#2d2d3a]">
-          Voltar para o inicio
+          Voltar para o início
         </button>
       </div>
     </div>

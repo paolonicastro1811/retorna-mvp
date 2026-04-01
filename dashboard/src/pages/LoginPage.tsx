@@ -39,7 +39,7 @@ export function LoginPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : ''
       if (message.includes('404') || message.includes('nao cadastrado')) {
-        setError('Email nao encontrado. Verifique ou crie uma conta.')
+        setError('Email não encontrado. Verifique ou crie uma conta.')
       } else {
         setError('Erro ao enviar o link. Tente novamente.')
       }
@@ -88,7 +88,7 @@ export function LoginPage() {
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 text-left">
             <p className="text-xs text-amber-700">
-              <strong>Nao recebeu?</strong> Verifique a pasta de spam. O link expira em 15 minutos.
+              <strong>Não recebeu?</strong> Verifique a pasta de spam. O link expira em 15 minutos.
             </p>
           </div>
 
@@ -157,13 +157,13 @@ export function LoginPage() {
 
         <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
           <p className="text-xs text-gray-400 text-center leading-relaxed">
-            🔒 Sem senha — voce recebera um link unico e seguro no email. A sessao permanece ativa por <strong>30 dias</strong>.
+            🔒 Sem senha — você receberá um link único e seguro no email. A sessão permanece ativa por <strong>30 dias</strong>.
           </p>
         </div>
 
         <div className="text-center mt-6">
           <p className="text-sm text-[#6b7280]">
-            Ainda nao tem conta?{' '}
+            Ainda não tem conta?{' '}
             <button onClick={() => navigate('/comecar')} className="text-[#25D366] font-semibold hover:underline">
               Ative seu restaurante
             </button>
@@ -174,7 +174,7 @@ export function LoginPage() {
           onClick={() => navigate('/')}
           className="block mx-auto mt-4 text-sm text-[#6b7280] hover:text-[#2d2d3a]"
         >
-          Voltar para o inicio
+          Voltar para o início
         </button>
       </div>
     </div>
