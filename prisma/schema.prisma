@@ -13,7 +13,7 @@ datasource db {
 }
 
 // --------------------------------------------------
-// RESTAURANT — Tenant principale
+// RESTAURANT — Tenant principal
 // --------------------------------------------------
 model Restaurant {
   id                    String   @id @default(cuid())
@@ -35,6 +35,8 @@ model Restaurant {
   reactivationAfterDays   Int    @default(30) @map("reactivation_after_days")
   surpriseEveryMinVisits  Int    @default(3)  @map("surprise_every_min_visits")
   surpriseEveryMaxVisits  Int    @default(7)  @map("surprise_every_max_visits")
+  roomLayout             Json?  @map("room_layout") // AI-generated room shape + metadata
+  avgMealDurationMinutes Int    @default(90) @map("avg_meal_duration_minutes") // Auto-complete after this many minutes
 
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
@@ -54,14 +56,19 @@ model Restaurant {
 }
 
 // --------------------------------------------------
-// RESTAURANT_TABLE — Tavoli del ristorante (Piano B)
+// RESTAURANT_TABLE — Mesas do restaurante (Plano B)
 // --------------------------------------------------
 model RestaurantTable {
-  id           String @id @default(cuid())
-  restaurantId String @map("restaurant_id")
-  tableNumber  Int    @map("table_number")
+  id           String  @id @default(cuid())
+  restaurantId String  @map("restaurant_id")
+  tableNumber  Int     @map("table_number")
   seats        Int
   isActive     Boolean @default(true) @map("is_active")
+  label        String? // e.g. "Janela", "Terraço"
+  posX         Float?  @map("pos_x")  // 0-100 percentage
+  posY         Float?  @map("pos_y")  // 0-100 percentage
+  width        Float?  @default(10)   // percentage of map width
+  height       Float?  @default(10)   // percentage of map height
 
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   reservations Reservation[]
@@ -72,7 +79,7 @@ model RestaurantTable {
 }
 
 // --------------------------------------------------
-// RESTAURANT_HOURS — Orari di apertura (Piano B)
+// RESTAURANT_HOURS — Horarios de funcionamento (Plano B)
 // --------------------------------------------------
 model RestaurantHours {
   id           String @id @default(cuid())
@@ -90,7 +97,7 @@ model RestaurantHours {
 }
 
 // --------------------------------------------------
-// CUSTOMER — Cliente del ristorante (phone = ID primario)
+// CUSTOMER — Cliente do restaurante (phone = ID primario)
 // Primary acquisition path: WhatsApp inbound message.
 // Historical imports are legacy/secondary — imported customers
 // remain opt-in "unknown" and are NOT campaign-eligible until
@@ -127,6 +134,7 @@ model Customer {
   lastReactivationSentAt  DateTime? @map("last_reactivation_sent_at")
   tierUpgradedAt          DateTime? @map("tier_upgraded_at")
   birthday                DateTime? @db.Date
+  deletedAt               DateTime? @map("deleted_at") // LGPD soft-delete
 
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
@@ -151,7 +159,7 @@ model Customer {
 }
 
 // --------------------------------------------------
-// CUSTOMER_EVENT — Solo tipo "visit" per MVP
+// CUSTOMER_EVENT — Somente tipo "visit" no MVP
 // --------------------------------------------------
 model CustomerEvent {
   id           String   @id @default(cuid())
@@ -171,7 +179,7 @@ model CustomerEvent {
 }
 
 // --------------------------------------------------
-// CAMPAIGN — Campagna di reactivation
+// CAMPAIGN — Campanha de reativacao
 // --------------------------------------------------
 model Campaign {
   id           String    @id @default(cuid())
@@ -197,7 +205,7 @@ model Campaign {
 }
 
 // --------------------------------------------------
-// CAMPAIGN_AUDIENCE_ITEM — Clienti selezionati per campagna
+// CAMPAIGN_AUDIENCE_ITEM — Clientes selecionados para campanha
 // --------------------------------------------------
 model CampaignAudienceItem {
   id         String   @id @default(cuid())
@@ -214,7 +222,7 @@ model CampaignAudienceItem {
 }
 
 // --------------------------------------------------
-// MESSAGE_TEMPLATE — Template messaggi WhatsApp
+// MESSAGE_TEMPLATE — Templates de mensagens WhatsApp
 // --------------------------------------------------
 model MessageTemplate {
   id           String   @id @default(cuid())
@@ -236,7 +244,7 @@ model MessageTemplate {
 }
 
 // --------------------------------------------------
-// OUTBOUND_MESSAGE — Messaggio inviato al cliente
+// OUTBOUND_MESSAGE — Mensagem enviada ao cliente
 // --------------------------------------------------
 model OutboundMessage {
   id            String    @id @default(cuid())
@@ -270,7 +278,7 @@ model OutboundMessage {
 }
 
 // --------------------------------------------------
-// MESSAGE_EVENT — Tracking eventi di delivery/reply
+// MESSAGE_EVENT — Rastreamento de eventos de entrega/resposta
 // --------------------------------------------------
 model MessageEvent {
   id        String   @id @default(cuid())
@@ -352,7 +360,7 @@ model ConversationReply {
 }
 
 // --------------------------------------------------
-// RESERVATION — Prenotazione tavolo (Piano B)
+// RESERVATION — Reserva de mesa (Plano B)
 // --------------------------------------------------
 model Reservation {
   id           String    @id @default(cuid())
@@ -366,6 +374,7 @@ model Reservation {
   endTime      String?   @map("end_time") // "21:00"
   partySize    Int       @default(2) @map("party_size")
   status       String    @default("pending") // pending | confirmed | seated | completed | cancelled | no_show
+  seatedAt     DateTime? @map("seated_at")  // Timestamp when status changed to "seated"
   notes        String?   @db.Text
   source       String    @default("manual") // manual | whatsapp_bot | phone
   createdAt    DateTime  @default(now()) @map("created_at")
@@ -382,7 +391,7 @@ model Reservation {
 }
 
 // --------------------------------------------------
-// IMPORT_JOB — Job di importazione dati (LEGACY)
+// IMPORT_JOB — Job de importacao de dados (LEGACY)
 // Historical import is NOT part of the primary compliant flow.
 // Imported customers default to opt-in "unknown" and cannot
 // enter campaign audiences until they initiate WhatsApp contact.

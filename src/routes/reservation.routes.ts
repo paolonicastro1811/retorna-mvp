@@ -21,6 +21,23 @@ router.get("/:restaurantId/reservations", async (req: Request, res: Response) =>
     const restaurantId = param(req, "restaurantId");
     const dateStr = req.query.date as string | undefined;
 
+    // ── Auto-complete stale "seated" reservations ──
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { avgMealDurationMinutes: true },
+    });
+    const durationMs = (restaurant?.avgMealDurationMinutes ?? 90) * 60 * 1000;
+    const cutoff = new Date(Date.now() - durationMs);
+
+    await prisma.reservation.updateMany({
+      where: {
+        restaurantId,
+        status: "seated",
+        seatedAt: { not: null, lte: cutoff },
+      },
+      data: { status: "completed" },
+    });
+
     const where: any = { restaurantId };
     if (dateStr) {
       const d = new Date(dateStr + "T00:00:00Z");
@@ -115,7 +132,13 @@ router.patch("/:restaurantId/reservations/:reservationId", async (req: Request, 
     }
 
     const data: any = {};
-    if (status !== undefined) data.status = status;
+    if (status !== undefined) {
+      data.status = status;
+      // Record timestamp when customer sits down
+      if (status === "seated") data.seatedAt = new Date();
+      // Clear seatedAt if reverting from seated
+      if (status !== "seated") data.seatedAt = null;
+    }
     if (tableId !== undefined) data.tableId = tableId || null;
     if (time !== undefined) data.time = time;
     if (endTime !== undefined) data.endTime = endTime || null;

@@ -135,7 +135,7 @@ export function OnboardingPage() {
           ))}
         </div>
 
-        {/* Step 1 — Info base */}
+        {/* Passo 1 — Informacoes basicas */}
         {step === 1 && (
           <div className="space-y-3">
             <div>
@@ -160,7 +160,7 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 2 — Scelta piano */}
+        {/* Passo 2 — Escolha do plano */}
         {step === 2 && (
           <div className="space-y-3">
             <p className="text-xs font-medium text-[#2d2d3a] mb-2">Escolha seu plano:</p>
@@ -208,7 +208,7 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 3 — Plan B: Tavoli + Orari / Plan A: Conferma */}
+        {/* Passo 3 — Plano B: Mesas + Horarios / Plano A: Confirmacao */}
         {step === 3 && plan === 'automatic' && (
           <div className="space-y-4">
             {/* Tables */}
@@ -254,7 +254,7 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 4 (Plan B) — Orari */}
+        {/* Passo 4 (Plano B) — Horarios */}
         {step === 4 && plan === 'automatic' && (
           <div className="space-y-3">
             <label className="block text-xs font-bold text-[#2d2d3a] mb-1">Horarios de funcionamento</label>
@@ -294,7 +294,7 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 3 (Plan A) — Conferma */}
+        {/* Passo 3 (Plano A) — Confirmacao */}
         {step === 3 && plan === 'manual' && (
           <div className="space-y-4">
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">

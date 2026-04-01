@@ -1,49 +1,247 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { RESTAURANT_ID } from '../config'
 import { recordVisit } from '../api/visits'
+import { searchCustomers } from '../api/customers'
+import type { CustomerSearchResult, VisitResponse } from '../types'
+
+const TIER_EMOJI: Record<string, string> = {
+  novo: '👤',
+  frequente: '⭐',
+  prata: '🥈',
+  ouro: '🥇',
+}
+const TIER_LABEL: Record<string, string> = {
+  novo: 'Novo',
+  frequente: 'Frequente',
+  prata: 'Prata',
+  ouro: 'Ouro',
+}
+const TIER_COLOR: Record<string, string> = {
+  novo: 'bg-gray-100 text-gray-700',
+  frequente: 'bg-yellow-100 text-yellow-800',
+  prata: 'bg-gray-200 text-gray-800',
+  ouro: 'bg-amber-100 text-amber-800',
+}
 
 export function VisitPage() {
   const [phone, setPhone] = useState('')
   const [amount, setAmount] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [result, setResult] = useState<VisitResponse | null>(null)
+
+  // Search state
+  const [results, setResults] = useState<CustomerSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [selected, setSelected] = useState<CustomerSearchResult | null>(null)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const doSearch = useCallback((q: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (q.length < 3) { setResults([]); setShowDropdown(false); return }
+
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const data = await searchCustomers(RESTAURANT_ID, q)
+        setResults(data)
+        setShowDropdown(data.length > 0)
+      } catch { setResults([]) }
+      finally { setSearching(false) }
+    }, 300)
+  }, [])
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(val)
+    setSelected(null)
+    setResult(null)
+    doSearch(val)
+  }
+
+  const selectCustomer = (c: CustomerSearchResult) => {
+    setSelected(c)
+    setPhone(c.phone)
+    setShowDropdown(false)
+    setResults([])
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!phone.trim()) return
 
     setSubmitting(true)
-    setSuccess(false)
+    setResult(null)
     try {
-      await recordVisit(RESTAURANT_ID, {
+      const res = await recordVisit(RESTAURANT_ID, {
         phone: phone.trim(),
+        customerName: selected?.name || undefined,
         amount: amount ? parseFloat(amount) : undefined,
       })
-      setSuccess(true)
-      setPhone('')
-      setAmount('')
+      setResult(res)
     } catch (e) { console.error(e) }
     finally { setSubmitting(false) }
+  }
+
+  const reset = () => {
+    setPhone('')
+    setAmount('')
+    setResult(null)
+    setSelected(null)
+    setResults([])
+  }
+
+  // If we have a result, show success screen
+  if (result) {
+    const lf = result.loyaltyFeedback
+    return (
+      <div className="max-w-sm">
+        <h1 className="text-lg font-bold text-gray-900 mb-4">Registrar Visita</h1>
+
+        {/* Success card */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm">✓</div>
+            <div>
+              <p className="text-sm font-bold text-green-900">Visita registrada!</p>
+              <p className="text-xs text-green-700">{result.customer.name || phone}</p>
+            </div>
+          </div>
+
+          {lf && (
+            <div className="space-y-2 mt-3 pt-3 border-t border-green-200">
+              {/* Tier + visits */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-green-800">Nivel atual</span>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${TIER_COLOR[lf.tier] || TIER_COLOR.novo}`}>
+                  {TIER_EMOJI[lf.tier] || ''} {TIER_LABEL[lf.tier] || lf.tier}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-green-800">Total de visitas</span>
+                <span className="text-xs font-bold text-green-900">{lf.totalVisits}</span>
+              </div>
+
+              {/* Progress to next tier */}
+              {lf.nextTier ? (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-green-700">
+                      Faltam <strong>{lf.visitsToNextTier}</strong> para {TIER_EMOJI[lf.nextTier]} {TIER_LABEL[lf.nextTier] || lf.nextTier}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-green-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#25D366] rounded-full transition-all"
+                      style={{ width: `${Math.min(100, ((lf.totalVisits) / (lf.totalVisits + lf.visitsToNextTier)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-green-700 font-semibold">🥇 Nivel maximo atingido!</p>
+              )}
+
+              {/* Streak */}
+              {lf.streakTarget > 0 && (
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-green-800">Sequencia semanal</span>
+                  <span className="text-xs font-bold text-green-900">
+                    🔥 {lf.currentStreak}/{lf.streakTarget}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={reset}
+          className="w-full bg-[#25D366] text-white py-2 rounded-lg font-semibold text-xs hover:bg-[#1DA851] transition-colors"
+        >
+          Registrar outra visita
+        </button>
+
+        <AutomationCTA />
+      </div>
+    )
   }
 
   return (
     <div className="max-w-sm">
       <h1 className="text-lg font-bold text-gray-900 mb-4">Registrar Visita</h1>
 
-      {/* Manual registration form */}
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
+        {/* Phone input with search */}
+        <div className="relative">
           <label className="block text-xs font-medium text-gray-700 mb-1">Telefone</label>
           <input
             type="tel"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={e => handlePhoneChange(e.target.value)}
             placeholder="+5511999999999"
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#25D366]"
           />
+          {searching && (
+            <div className="absolute right-3 top-7">
+              <div className="w-3 h-3 border-2 border-[#25D366] border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* Search dropdown */}
+          {showDropdown && results.length > 0 && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+              {results.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => selectCustomer(c)}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center justify-between border-b last:border-0"
+                >
+                  <div>
+                    <p className="text-xs font-medium text-gray-900">{c.name || 'Sem nome'}</p>
+                    <p className="text-[10px] text-gray-500">{c.phone}</p>
+                  </div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${TIER_COLOR[c.tier] || TIER_COLOR.novo}`}>
+                    {TIER_EMOJI[c.tier] || ''} {TIER_LABEL[c.tier] || c.tier}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
+        {/* Selected customer card */}
+        {selected && (
+          <div className="bg-[#1a1a2e] rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-white">{selected.name || 'Sem nome'}</p>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${TIER_COLOR[selected.tier]}`}>
+                {TIER_EMOJI[selected.tier]} {TIER_LABEL[selected.tier]}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <p className="text-[10px] text-gray-400">Visitas</p>
+                <p className="text-xs font-bold text-white">{selected.totalVisits}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400">Sequencia</p>
+                <p className="text-xs font-bold text-white">🔥 {selected.currentStreak}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400">Ultima visita</p>
+                <p className="text-xs font-bold text-white">
+                  {selected.lastVisitAt
+                    ? new Date(selected.lastVisitAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                    : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Amount */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Valor (R$)</label>
           <input
@@ -66,36 +264,35 @@ export function VisitPage() {
         </button>
       </form>
 
-      {success && (
-        <div className="mt-3 bg-green-50 border border-green-200 text-green-800 rounded-lg p-3 text-xs">
-          Visita registrada com sucesso!
-        </div>
-      )}
+      <AutomationCTA />
+    </div>
+  )
+}
 
-      {/* Automation CTA */}
-      <div className="mt-6 border-t border-gray-200 pt-4">
-        <div className="bg-[#1a1a2e] rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-            </svg>
-            <h3 className="text-xs font-bold text-white">Quer automatizar?</h3>
-          </div>
-          <p className="text-[10px] text-gray-400 mb-3">
-            Cada restaurante tem seu proprio sistema. Podemos configurar a integracao automatica com o seu POS, maquininha ou sistema de pedidos.
-          </p>
-          <a
-            href="https://wa.me/5511999999999?text=Oi!%20Quero%20saber%20mais%20sobre%20a%20automacao%20de%20registro%20de%20visitas"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold hover:bg-[#1DA851] transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-            </svg>
-            Falar com suporte
-          </a>
+function AutomationCTA() {
+  return (
+    <div className="mt-6 border-t border-gray-200 pt-4">
+      <div className="bg-[#1a1a2e] rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+          </svg>
+          <h3 className="text-xs font-bold text-white">Quer automatizar?</h3>
         </div>
+        <p className="text-[10px] text-gray-400 mb-3">
+          Cada restaurante tem seu proprio sistema. Podemos configurar a integracao automatica com o seu POS, maquininha ou sistema de pedidos.
+        </p>
+        <a
+          href="https://wa.me/5511999999999?text=Oi!%20Quero%20saber%20mais%20sobre%20a%20automacao%20de%20registro%20de%20visitas"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold hover:bg-[#1DA851] transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+          </svg>
+          Falar com suporte
+        </a>
       </div>
     </div>
   )

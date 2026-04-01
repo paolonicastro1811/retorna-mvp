@@ -7,6 +7,7 @@ import { VisitPage } from './pages/VisitPage'
 import { BookingLeadsPage } from './pages/BookingLeadsPage'
 import { AutomacoesPage } from './pages/AutomacoesPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { SalaAoVivoPage } from './pages/SalaAoVivoPage'
 
 export default function App() {
   return (
@@ -22,7 +23,8 @@ export default function App() {
           <Route path="visita" element={<VisitPage />} />
           <Route path="campanhas" element={<AutomacoesPage />} />
           <Route path="leads" element={<BookingLeadsPage />} />
-          <Route path="impostacoes" element={<SettingsPage />} />
+          <Route path="sala-ao-vivo" element={<SalaAoVivoPage />} />
+          <Route path="configuracoes" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

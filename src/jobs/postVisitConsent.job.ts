@@ -1,0 +1,91 @@
+// ============================================================
+// Post-Visit Consent Job
+// Sends "Foi um prazer" follow-up ~2h after a visit,
+// asking for marketing opt-in consent via WhatsApp.
+// Only sends once per customer (checked via welcomeAutoReplySentAt).
+// ============================================================
+
+import { prisma } from "../database/client";
+import { whatsappProvider } from "../services/whatsapp.provider";
+
+export async function runPostVisitConsent(): Promise<{ sent: number; errors: number }> {
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const WINDOW_MS = 30 * 60 * 1000; // 30min window to catch visits in cron cycles
+
+  const windowEnd = new Date(Date.now() - TWO_HOURS_MS);
+  const windowStart = new Date(Date.now() - TWO_HOURS_MS - WINDOW_MS);
+
+  // Find visit events within the 2h-2h30m window whose customer
+  // has never received the welcome/consent message
+  const recentVisits = await prisma.customerEvent.findMany({
+    where: {
+      eventType: "visit",
+      occurredAt: { gte: windowStart, lte: windowEnd },
+      customer: {
+        welcomeAutoReplySentAt: null,
+        contactableStatus: "contactable",
+      },
+    },
+    include: {
+      customer: { select: { id: true, phone: true, name: true, restaurantId: true } },
+    },
+    distinct: ["customerId"], // one message per customer even with multiple visits
+  });
+
+  let sent = 0;
+  let errors = 0;
+
+  for (const visit of recentVisits) {
+    const { customer } = visit;
+    const name = customer.name ?? "Cliente";
+
+    try {
+      const result = await whatsappProvider.sendTemplate(
+        customer.phone,
+        "post_visit_consent_v1",
+        "pt_BR",
+        [name]
+      );
+
+      // Mark customer as having received the welcome message
+      await prisma.customer.update({
+        where: { id: customer.id },
+        data: { welcomeAutoReplySentAt: new Date() },
+      });
+
+      // Log the automation
+      await prisma.automationLog.create({
+        data: {
+          restaurantId: customer.restaurantId,
+          customerId: customer.id,
+          templateKey: "post_visit_consent",
+          status: result.success ? "sent" : "failed",
+          providerMsgId: result.providerMsgId ?? null,
+          metadata: { visitEventId: visit.id, name },
+        },
+      });
+
+      if (result.success) sent++;
+      else errors++;
+    } catch (err) {
+      console.error(`[PostVisitConsent] Error for customer=${customer.id}:`, err);
+
+      await prisma.automationLog.create({
+        data: {
+          restaurantId: customer.restaurantId,
+          customerId: customer.id,
+          templateKey: "post_visit_consent",
+          status: "failed",
+          metadata: { error: (err as Error).message, visitEventId: visit.id },
+        },
+      });
+
+      errors++;
+    }
+
+    // Throttle: 100ms between messages
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  return { sent, errors };
+}

@@ -15,7 +15,7 @@ export const customerRepository = {
 
   async findByRestaurant(restaurantId: string) {
     return prisma.customer.findMany({
-      where: { restaurantId },
+      where: { restaurantId, deletedAt: null },
       orderBy: { lastVisitAt: "desc" },
     });
   },

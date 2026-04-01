@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { RESTAURANT_ID } from '../config'
 import { api } from '../api/client'
+import { TableMapEditor } from '../components/TableMapEditor'
 
 interface Restaurant {
   id: string
@@ -20,11 +21,10 @@ interface Restaurant {
   reactivationAfterDays: number
   surpriseEveryMinVisits: number
   surpriseEveryMaxVisits: number
+  avgMealDurationMinutes: number
 }
 
-interface Table { id: string; tableNumber: number; seats: number; isActive: boolean }
 interface Hour { id: string; dayOfWeek: number; openTime: string; closeTime: string; isClosed: boolean }
-interface TableRow { seats: number; qty: number }
 interface MessageTemplate {
   id: string
   name: string
@@ -41,21 +41,23 @@ const PLANS = [
     name: 'Plano A — Manual',
     price: 'R$ 197',
     period: '/mes',
-    desc: 'Ideal para quem quer controlar as conversas pessoalmente',
+    desc: 'Gestao completa dos clientes com controle humano das conversas',
     features: [
-      'Bot de boas-vindas humanizado',
-      'Encaminhamento para responsavel humano',
-      'Painel de clientes com status e gastos',
-      'Registro manual de visitas',
-      'Campanhas de reativacao por WhatsApp',
-      'Templates de mensagens personalizaveis',
-      'Relatorio de ROI por campanha',
-      'Conformidade LGPD integrada',
+      'Painel de clientes com lifecycle (ativo/em risco/inativo)',
+      'Registro manual de visitas com valor gasto',
+      'Programa de fidelidade com 4 niveis (Novo → Ouro)',
+      'Mensagens automaticas: boas-vindas, pos-visita, reativacao',
+      'Desconto progressivo por nivel de fidelidade',
+      'Streak de visitas com recompensas',
+      'Surpresas aleatorias para clientes fieis',
+      'Conformidade LGPD (exclusao de dados, opt-in)',
+      'Templates de mensagens WhatsApp personalizaveis',
     ],
     notIncluded: [
+      'AI conversacional 24/7 via WhatsApp',
       'Reservas automaticas por AI',
-      'Gestao de mesas e horarios',
-      'Calendario inteligente',
+      'Mapa de mesas interativo com disponibilidade',
+      'Horarios de funcionamento configuraveis',
     ],
   },
   {
@@ -64,16 +66,18 @@ const PLANS = [
     price: 'R$ 397',
     period: '/mes',
     popular: true,
-    desc: 'Tudo automatizado: AI responde, reserva e reativa',
+    desc: 'Tudo automatizado: AI responde, reserva mesas e reativa clientes',
     features: [
-      'Tudo do Plano Manual',
-      'AI conversacional 24/7 (responde como humano)',
-      'Reservas automaticas via WhatsApp',
-      'Gestao de mesas e coperti',
-      'Horarios de funcionamento configuráveis',
-      'Calendario inteligente com disponibilidade',
-      'Confirmacao e lembrete automatico',
-      'Relatorios avancados de ocupacao',
+      'Tudo do Plano Manual incluso',
+      'AI conversacional 24/7 (classifica intencoes automaticamente)',
+      'Reservas via WhatsApp com confirmacao automatica',
+      'Mapa de mesas interativo (cores em tempo real)',
+      'Editor de layout com AI (descreva seu restaurante)',
+      'Horarios de funcionamento configuraveis por dia',
+      'Duracao da refeicao configuravel (auto-liberacao de mesas)',
+      'Disponibilidade em tempo real por mesa e horario',
+      'Prenotacao inline: clique no tavolo → escolha horario',
+      'Sincronizacao automatica AI bot ↔ mapa (15s)',
     ],
     notIncluded: [],
   },
@@ -89,15 +93,12 @@ export function SettingsPage() {
   const [phone, setPhone] = useState('')
   const [timezone, setTimezone] = useState('')
 
-  // Tables + hours (Plan B)
-  const [tables, setTables] = useState<Table[]>([])
+  // Hours (Plan B)
   const [hours, setHours] = useState<Hour[]>([])
-  const [tableRows, setTableRows] = useState<TableRow[]>([])
   const [editHours, setEditHours] = useState<{ dayOfWeek: number; open: string; close: string; closed: boolean }[]>([])
-  const [savingTables, setSavingTables] = useState(false)
   const [savingHours, setSavingHours] = useState(false)
-  const [savedTables, setSavedTables] = useState(false)
   const [savedHours, setSavedHours] = useState(false)
+  const [mealDuration, setMealDuration] = useState(90)
 
   // Templates / Automations
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
@@ -126,15 +127,14 @@ export function SettingsPage() {
   useEffect(() => {
     Promise.all([
       api<Restaurant>(`/restaurants/${RESTAURANT_ID}`),
-      api<Table[]>(`/restaurants/${RESTAURANT_ID}/tables`),
       api<Hour[]>(`/restaurants/${RESTAURANT_ID}/hours`),
       api<MessageTemplate[]>(`/restaurants/${RESTAURANT_ID}/templates`),
-    ]).then(([r, t, h, tpls]) => {
+    ]).then(([r, h, tpls]) => {
       setRestaurant(r)
       setName(r.name)
       setPhone(r.phone ?? '')
       setTimezone(r.timezone)
-      setTables(t)
+      setMealDuration(r.avgMealDurationMinutes ?? 90)
       setHours(h)
       setTemplates(tpls)
       setLoyaltyConfig({
@@ -150,14 +150,6 @@ export function SettingsPage() {
         surpriseEveryMinVisits: r.surpriseEveryMinVisits ?? 3,
         surpriseEveryMaxVisits: r.surpriseEveryMaxVisits ?? 7,
       })
-
-      const seatMap = new Map<number, number>()
-      for (const tb of t) {
-        seatMap.set(tb.seats, (seatMap.get(tb.seats) ?? 0) + 1)
-      }
-      if (seatMap.size > 0) {
-        setTableRows(Array.from(seatMap.entries()).map(([seats, qty]) => ({ seats, qty })).sort((a, b) => a.seats - b.seats))
-      }
 
       const hourMap = new Map(h.map(hr => [hr.dayOfWeek, hr]))
       setEditHours(Array.from({ length: 7 }, (_, i) => {
@@ -185,42 +177,28 @@ export function SettingsPage() {
     finally { setSaving(false) }
   }
 
-  const handleSaveTables = async () => {
-    setSavingTables(true)
-    setSavedTables(false)
-    try {
-      const tablesData: { tableNumber: number; seats: number }[] = []
-      let num = 1
-      for (const row of tableRows) {
-        for (let i = 0; i < row.qty; i++) {
-          tablesData.push({ tableNumber: num++, seats: row.seats })
-        }
-      }
-      const result = await api<Table[]>(`/restaurants/${RESTAURANT_ID}/tables`, {
-        method: 'POST',
-        body: JSON.stringify({ tables: tablesData }),
-      })
-      setTables(result)
-      setSavedTables(true)
-    } catch (e) { console.error(e) }
-    finally { setSavingTables(false) }
-  }
-
   const handleSaveHours = async () => {
     setSavingHours(true)
     setSavedHours(false)
     try {
-      const result = await api<Hour[]>(`/restaurants/${RESTAURANT_ID}/hours`, {
-        method: 'POST',
-        body: JSON.stringify({
-          hours: editHours.map(h => ({
-            dayOfWeek: h.dayOfWeek,
-            openTime: h.open,
-            closeTime: h.close,
-            isClosed: h.closed,
-          })),
+      // Save hours + meal duration in parallel
+      const [result] = await Promise.all([
+        api<Hour[]>(`/restaurants/${RESTAURANT_ID}/hours`, {
+          method: 'POST',
+          body: JSON.stringify({
+            hours: editHours.map(h => ({
+              dayOfWeek: h.dayOfWeek,
+              openTime: h.open,
+              closeTime: h.close,
+              isClosed: h.closed,
+            })),
+          }),
         }),
-      })
+        api(`/restaurants/${RESTAURANT_ID}`, {
+          method: 'PUT',
+          body: JSON.stringify({ avgMealDurationMinutes: mealDuration }),
+        }),
+      ])
       setHours(result)
       setSavedHours(true)
     } catch (e) { console.error(e) }
@@ -268,8 +246,6 @@ export function SettingsPage() {
   }
 
   const isPlanB = restaurant?.plan === 'automatic'
-  const totalTables = tableRows.reduce((s, r) => s + r.qty, 0)
-  const totalSeats = tableRows.reduce((s, r) => s + r.seats * r.qty, 0)
 
   if (loading) return <div className="text-center py-20 text-gray-400 text-xs">Carregando...</div>
   if (!restaurant) return <div className="text-center py-20 text-red-500 text-xs">Erro</div>
@@ -278,79 +254,10 @@ export function SettingsPage() {
     <div className="max-w-2xl">
       <h1 className="text-lg font-bold text-gray-900 mb-6">Configuracoes</h1>
 
-      {/* ── SECTION 1: Plano e Precos ── */}
+      {/* ── SECTION 1: Dados do Restaurante ── */}
       <section className="mb-8">
         <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
           <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">1</span>
-          Seu Plano
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {PLANS.map(plan => {
-            const isCurrentPlan = restaurant.plan === plan.key
-            return (
-              <div key={plan.key} className={`relative border rounded-xl p-4 transition-all ${
-                isCurrentPlan
-                  ? 'border-[#25D366] bg-green-50/50 ring-2 ring-[#25D366]/20'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}>
-                {plan.popular && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#25D366] text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full">
-                    MAIS POPULAR
-                  </span>
-                )}
-                {isCurrentPlan && (
-                  <span className="absolute top-3 right-3 bg-[#25D366] text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                    ATUAL
-                  </span>
-                )}
-                <h3 className="text-xs font-bold text-gray-900 mt-1">{plan.name}</h3>
-                <div className="mt-2 mb-2">
-                  <span className="text-2xl font-extrabold text-gray-900">{plan.price}</span>
-                  <span className="text-[10px] text-gray-500">{plan.period}</span>
-                </div>
-                <p className="text-[10px] text-gray-500 mb-3">{plan.desc}</p>
-
-                <ul className="space-y-1.5 mb-3">
-                  {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-1.5 text-[10px] text-gray-700">
-                      <span className="text-[#25D366] mt-0.5 shrink-0">&#10003;</span>
-                      {f}
-                    </li>
-                  ))}
-                  {plan.notIncluded.map((f, i) => (
-                    <li key={`no-${i}`} className="flex items-start gap-1.5 text-[10px] text-gray-400">
-                      <span className="mt-0.5 shrink-0">&#10007;</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {isCurrentPlan ? (
-                  <div className="text-center text-[10px] text-[#25D366] font-semibold py-1.5">
-                    Plano ativo
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleChangePlan(plan.key)}
-                    disabled={changingPlan}
-                    className={`w-full py-1.5 rounded-lg text-[10px] font-semibold transition-colors ${
-                      plan.key === 'automatic'
-                        ? 'bg-[#25D366] text-white hover:bg-[#1DA851] disabled:opacity-50'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50'
-                    }`}>
-                    {changingPlan ? 'Alterando...' : plan.key === 'automatic' ? 'Fazer upgrade' : 'Mudar para Manual'}
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* ── SECTION 2: Configuracoes Gerais ── */}
-      <section className="mb-8">
-        <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">2</span>
           Dados do Restaurante
         </h2>
         <div className="space-y-3 bg-gray-50 rounded-xl p-4">
@@ -377,10 +284,10 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* ── SECTION 3: Programa de Fidelidade ── */}
+      {/* ── SECTION 2: Programa de Fidelidade ── */}
       <section className="mb-8">
         <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">3</span>
+          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">2</span>
           Programa de Fidelidade
         </h2>
 
@@ -452,9 +359,15 @@ export function SettingsPage() {
           {savedLoyalty && <div className="mt-2 bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-[10px]">Configuracao salva!</div>}
         </div>
 
-        {/* Template toggles */}
+      </section>
+
+      {/* ── SECTION 3: Mensagens Automaticas ── */}
+      <section className="mb-8">
+        <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">3</span>
+          Mensagens Automaticas
+        </h2>
         <div className="bg-gray-50 rounded-xl p-4">
-          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Mensagens automaticas</p>
           <p className="text-[9px] text-gray-400 mb-3">Ative ou desative as mensagens que o sistema envia automaticamente via WhatsApp.</p>
           <div className="space-y-2">
             {templates.map(tpl => (
@@ -495,55 +408,11 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* ── SECTION 4: Tables (Plan B only) ── */}
+      {/* ── SECTION 4: Hours (Plan B only) ── */}
       {isPlanB && (
         <section className="mb-8">
           <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
             <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">4</span>
-            Mesas
-          </h2>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="space-y-2">
-              {tableRows.map((row, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <label className="text-[10px] text-gray-500">Lugares</label>
-                    <input type="number" min="1" value={row.seats}
-                      onChange={e => setTableRows(tableRows.map((r, idx) => idx === i ? { ...r, seats: Math.max(1, parseInt(e.target.value) || 1) } : r))}
-                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] text-gray-500">Quantidade</label>
-                    <input type="number" min="1" value={row.qty}
-                      onChange={e => setTableRows(tableRows.map((r, idx) => idx === i ? { ...r, qty: Math.max(1, parseInt(e.target.value) || 1) } : r))}
-                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
-                  </div>
-                  {tableRows.length > 1 && (
-                    <button onClick={() => setTableRows(tableRows.filter((_, idx) => idx !== i))}
-                      className="mt-3 text-red-400 hover:text-red-600 text-xs">✕</button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setTableRows([...tableRows, { seats: 2, qty: 1 }])}
-              className="mt-2 text-[10px] text-[#25D366] font-semibold hover:underline">
-              + Adicionar tipo de mesa
-            </button>
-            <p className="text-[10px] text-gray-400 mt-1">Total: {totalTables} mesas, {totalSeats} lugares</p>
-            <button onClick={handleSaveTables} disabled={savingTables || tableRows.length === 0}
-              className="w-full mt-2 bg-[#25D366] text-white py-2 rounded-lg font-semibold text-xs hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
-              {savingTables ? 'Salvando...' : 'Salvar mesas'}
-            </button>
-            {savedTables && <div className="mt-2 bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-[10px]">Mesas salvas!</div>}
-          </div>
-        </section>
-      )}
-
-      {/* ── SECTION 5: Hours (Plan B only) ── */}
-      {isPlanB && (
-        <section className="mb-8">
-          <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-            <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">5</span>
             Horarios
           </h2>
           <div className="bg-gray-50 rounded-xl p-4">
@@ -572,6 +441,18 @@ export function SettingsPage() {
                 </div>
               ))}
             </div>
+            {/* Meal duration — auto-complete reservations */}
+            <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-3">
+              <span className="text-[10px] text-gray-600 whitespace-nowrap">Duracao media da refeicao:</span>
+              <div className="flex items-center gap-1">
+                <input type="number" min={30} max={240} step={15} value={mealDuration}
+                  onChange={e => setMealDuration(Math.max(30, Math.min(240, parseInt(e.target.value) || 90)))}
+                  className="w-16 border border-gray-200 rounded px-2 py-1 text-[10px] text-center bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
+                <span className="text-[10px] text-gray-400">min</span>
+              </div>
+              <span className="text-[9px] text-gray-400">(Mesas ficam livres automaticamente apos esse tempo)</span>
+            </div>
+
             <button onClick={handleSaveHours} disabled={savingHours}
               className="w-full mt-3 bg-[#25D366] text-white py-2 rounded-lg font-semibold text-xs hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
               {savingHours ? 'Salvando...' : 'Salvar horarios'}
@@ -580,6 +461,86 @@ export function SettingsPage() {
           </div>
         </section>
       )}
+
+      {/* ── SECTION 5: Table Layout (Plan B only) ── */}
+      {isPlanB && (
+        <section className="mb-8">
+          <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">5</span>
+            Mesas e Layout
+          </h2>
+          <TableMapEditor />
+        </section>
+      )}
+
+      {/* ── SECTION 6: Plano e Precos ── */}
+      <section className="mb-8">
+        <h2 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-[10px] font-bold">6</span>
+          Seu Plano
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          {PLANS.map(plan => {
+            const isCurrentPlan = restaurant.plan === plan.key
+            return (
+              <div key={plan.key} className={`relative border rounded-xl p-4 transition-all ${
+                isCurrentPlan
+                  ? 'border-[#25D366] bg-green-50/50 ring-2 ring-[#25D366]/20'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}>
+                {plan.popular && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#25D366] text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full">
+                    MAIS POPULAR
+                  </span>
+                )}
+                {isCurrentPlan && (
+                  <span className="absolute top-3 right-3 bg-[#25D366] text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                    ATUAL
+                  </span>
+                )}
+                <h3 className="text-xs font-bold text-gray-900 mt-1">{plan.name}</h3>
+                <div className="mt-2 mb-2">
+                  <span className="text-2xl font-extrabold text-gray-900">{plan.price}</span>
+                  <span className="text-[10px] text-gray-500">{plan.period}</span>
+                </div>
+                <p className="text-[10px] text-gray-500 mb-3">{plan.desc}</p>
+
+                <ul className="space-y-1.5 mb-3">
+                  {plan.features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-[10px] text-gray-700">
+                      <span className="text-[#25D366] mt-0.5 shrink-0">&#10003;</span>
+                      {f}
+                    </li>
+                  ))}
+                  {plan.notIncluded.map((f, i) => (
+                    <li key={`no-${i}`} className="flex items-start gap-1.5 text-[10px] text-gray-400">
+                      <span className="mt-0.5 shrink-0">&#10007;</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                {isCurrentPlan ? (
+                  <div className="text-center text-[10px] text-[#25D366] font-semibold py-1.5">
+                    Plano ativo
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleChangePlan(plan.key)}
+                    disabled={changingPlan}
+                    className={`w-full py-1.5 rounded-lg text-[10px] font-semibold transition-colors ${
+                      plan.key === 'automatic'
+                        ? 'bg-[#25D366] text-white hover:bg-[#1DA851] disabled:opacity-50'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50'
+                    }`}>
+                    {changingPlan ? 'Alterando...' : plan.key === 'automatic' ? 'Fazer upgrade' : 'Mudar para Manual'}
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </section>
 
       {/* Info */}
       <div className="border-t border-gray-200 pt-4">

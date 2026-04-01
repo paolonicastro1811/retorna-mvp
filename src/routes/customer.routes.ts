@@ -12,6 +12,40 @@ router.get("/:restaurantId/customers", async (req: Request, res: Response) => {
   res.json(customers);
 });
 
+/**
+ * GET /restaurants/:restaurantId/customers/search?q=5511
+ * Typeahead search by phone or name (min 3 chars, max 5 results)
+ */
+router.get("/:restaurantId/customers/search", async (req: Request, res: Response) => {
+  const restaurantId = param(req, "restaurantId");
+  const q = (req.query.q as string || "").trim();
+  if (q.length < 3) return res.json([]);
+
+  const customers = await prisma.customer.findMany({
+    where: {
+      restaurantId,
+      deletedAt: null,
+      OR: [
+        { phone: { contains: q } },
+        { name: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      tier: true,
+      totalVisits: true,
+      currentStreak: true,
+      streakUpdatedAt: true,
+      lastVisitAt: true,
+      lifecycleStatus: true,
+    },
+    take: 5,
+  });
+  res.json(customers);
+});
+
 router.get(
   "/:restaurantId/customers/:customerId",
   async (req: Request, res: Response) => {
@@ -125,9 +159,9 @@ router.patch(
 /**
  * DELETE /restaurants/:restaurantId/customers/:customerId
  *
- * LGPD Art. 18 — Right to deletion: permanently removes customer
- * and ALL related data (events, messages, attributions, inbound logs).
- * Prisma cascade handles all child records.
+ * LGPD Art. 18 — Right to deletion: soft-deletes customer
+ * by setting deletedAt timestamp and anonymizing PII (name, phone).
+ * Data is retained for audit trail but rendered non-identifiable.
  *
  * Also available via WhatsApp keyword: APAGAR / DELETAR
  */
@@ -140,16 +174,27 @@ router.delete(
     });
     if (!customer) return res.status(404).json({ error: "Not found" });
 
-    await prisma.customer.delete({ where: { id: customerId } });
+    // Soft-delete: anonymize PII + set deletedAt
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: {
+        deletedAt: new Date(),
+        name: null,
+        phone: `deleted_${customerId}`,
+        contactableStatus: "do_not_contact",
+        whatsappOptInStatus: "revoked",
+        lifecycleStatus: "inactive",
+      },
+    });
 
     console.log(
-      `[LGPD] Customer deleted: id=${customerId} phone=${customer.phone}`
+      `[LGPD] Customer soft-deleted: id=${customerId} phone=${customer.phone}`
     );
 
     res.json({
       deleted: true,
       customerId,
-      _lgpd: "All customer data permanently deleted per LGPD Art. 18",
+      _lgpd: "Dados do cliente anonimizados e marcados como excluidos conforme LGPD Art. 18",
     });
   }
 );

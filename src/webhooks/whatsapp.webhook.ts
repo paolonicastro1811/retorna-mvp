@@ -228,13 +228,24 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
             // --- LGPD Data deletion (Art. 18 — direito de eliminação) ---
             if (text && DATA_DELETE_KEYWORDS.some((kw) => text === kw)) {
               const deleteId = customer.id;
-              await prisma.customer.delete({ where: { id: deleteId } });
+              // Soft-delete: anonymize PII + set deletedAt
+              await prisma.customer.update({
+                where: { id: deleteId },
+                data: {
+                  deletedAt: new Date(),
+                  name: null,
+                  phone: `deleted_${deleteId}`,
+                  contactableStatus: "do_not_contact",
+                  whatsappOptInStatus: "revoked",
+                  lifecycleStatus: "inactive",
+                },
+              });
               await whatsappProvider.sendMessage(
                 phoneE164,
-                "Seus dados foram completamente removidos do nosso sistema, conforme seu direito pela LGPD. Se precisar de algo no futuro, é só nos escrever. 🙏"
+                "Seus dados foram removidos do nosso sistema, conforme seu direito pela LGPD. Se precisar de algo no futuro, e so nos escrever. 🙏"
               );
               console.log(
-                `[LGPD] Customer data deleted via WhatsApp: id=${deleteId} phone=${from}`
+                `[LGPD] Customer soft-deleted via WhatsApp: id=${deleteId} phone=${from}`
               );
               continue;
             }

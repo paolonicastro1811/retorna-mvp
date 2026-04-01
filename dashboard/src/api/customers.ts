@@ -1,8 +1,11 @@
 import { api } from './client'
-import type { Customer } from '../types'
+import type { Customer, CustomerSearchResult } from '../types'
 
 export const getCustomers = (rid: string) =>
   api<Customer[]>(`/restaurants/${rid}/customers`)
+
+export const searchCustomers = (rid: string, query: string) =>
+  api<CustomerSearchResult[]>(`/restaurants/${rid}/customers/search?q=${encodeURIComponent(query)}`)
 
 export const deleteCustomer = (rid: string, cid: string) =>
   api<{ deleted: boolean }>(`/restaurants/${rid}/customers/${cid}`, { method: 'DELETE' })

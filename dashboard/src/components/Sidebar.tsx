@@ -28,6 +28,7 @@ const links = [
   { to: '/painel/visita', label: 'Registrar Visita', planB: false },
   { to: '/painel/campanhas', label: 'Automacoes', planB: false },
   { to: '/painel/leads', label: 'Reservas', planB: true },
+  { to: '/painel/sala-ao-vivo', label: 'Sala ao Vivo', planB: true },
 ]
 
 export function Sidebar() {
@@ -97,7 +98,7 @@ export function Sidebar() {
       {/* Settings */}
       <div className="border-t border-white/10 p-3">
         <NavLink
-          to="/painel/impostacoes"
+          to="/painel/configuracoes"
           className={({ isActive }) =>
             `flex items-center gap-2 px-3 py-2 text-xs rounded-lg transition-colors ${
               isActive

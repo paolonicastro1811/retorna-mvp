@@ -3,11 +3,15 @@ import { customerEventService } from "../services/customerEvent.service";
 import { customerEventRepository } from "../repositories/customerEvent.repository";
 import { param } from "../shared/params";
 import { onVisitRegistered } from "../services/loyalty.service";
+import { prisma } from "../database/client";
+
+const TIER_ORDER = ["novo", "frequente", "prata", "ouro"];
 
 const router = Router();
 
 /**
- * POST /restaurants/:restaurantId/visits — Registra una visita
+ * POST /restaurants/:restaurantId/visits — Registra uma visita
+ * Returns enriched response with loyalty feedback
  */
 router.post("/:restaurantId/visits", async (req: Request, res: Response) => {
   const restaurantId = param(req, "restaurantId");
@@ -28,7 +32,36 @@ router.post("/:restaurantId/visits", async (req: Request, res: Response) => {
     console.error("[Loyalty] onVisitRegistered error:", err)
   );
 
-  res.status(201).json(result);
+  // Build loyalty feedback from updated customer + restaurant config
+  let loyaltyFeedback = null;
+  try {
+    const [updatedCustomer, restaurant] = await Promise.all([
+      prisma.customer.findUnique({ where: { id: result.customer.id } }),
+      prisma.restaurant.findUnique({ where: { id: restaurantId } }),
+    ]);
+    if (updatedCustomer && restaurant) {
+      const tier = updatedCustomer.tier as string;
+      const tierIdx = TIER_ORDER.indexOf(tier);
+      const nextTier = tierIdx < TIER_ORDER.length - 1 ? TIER_ORDER[tierIdx + 1] : null;
+      const thresholds: Record<string, number> = {
+        frequente: restaurant.tierFrequenteMinVisits,
+        prata: restaurant.tierPrataMinVisits,
+        ouro: restaurant.tierOuroMinVisits,
+      };
+      const visitsToNextTier = nextTier ? Math.max(0, thresholds[nextTier] - updatedCustomer.totalVisits) : 0;
+
+      loyaltyFeedback = {
+        tier,
+        nextTier,
+        visitsToNextTier,
+        currentStreak: updatedCustomer.currentStreak,
+        streakTarget: restaurant.streakTargetVisits,
+        totalVisits: updatedCustomer.totalVisits,
+      };
+    }
+  } catch (_) { /* non-blocking */ }
+
+  res.status(201).json({ ...result, loyaltyFeedback });
 });
 
 /**
