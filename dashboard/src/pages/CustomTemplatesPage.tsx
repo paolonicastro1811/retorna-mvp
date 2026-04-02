@@ -154,14 +154,14 @@ export function CustomTemplatesPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Templates Custom</h1>
-      <p className="text-base text-gray-500">
+      <h1 className="text-3xl font-bold text-gray-900">Templates Custom</h1>
+      <p className="text-lg text-gray-500">
         Crie mensagens personalizadas para suas campanhas. Cada template passa por revisao de AI e aprovacao da Meta.
       </p>
 
       {/* Campaign limits info */}
       {limits && (
-        <div className={`rounded-lg p-4 text-base ${limits.allowed ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+        <div className={`rounded-lg p-4 text-lg ${limits.allowed ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
           {limits.allowed ? (
             <p>Campanhas custom este mes: <strong>{limits.details?.customCampaignsThisMonth || 0}/{limits.details?.maxCustomCampaigns || 2}</strong></p>
           ) : (
@@ -172,13 +172,13 @@ export function CustomTemplatesPage() {
 
       {/* Error/Success messages */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-base">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-lg">
           {error}
           <button onClick={() => setError('')} className="float-right font-bold">x</button>
         </div>
       )}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-base">
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-lg">
           {success}
           <button onClick={() => setSuccess('')} className="float-right font-bold">x</button>
         </div>
@@ -186,21 +186,21 @@ export function CustomTemplatesPage() {
 
       {/* Create new template */}
       <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
-        <h2 className="text-xl font-semibold text-gray-800">Novo Template</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Novo Template</h2>
 
         <div>
-          <label className="block text-base font-medium text-gray-700 mb-1">Nome do template</label>
+          <label className="block text-lg font-medium text-gray-700 mb-1">Nome do template</label>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Ex: Promocao de verao"
-            className="w-full border rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className="w-full border rounded-lg px-3 py-2 text-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
 
         <div>
-          <label className="block text-base font-medium text-gray-700 mb-1">
+          <label className="block text-lg font-medium text-gray-700 mb-1">
             Mensagem <span className="text-gray-400">(use {'{{customer_name}}'} para personalizar)</span>
           </label>
           <textarea
@@ -208,9 +208,9 @@ export function CustomTemplatesPage() {
             onChange={e => setBody(e.target.value)}
             placeholder="Oi {{customer_name}}! Temos uma novidade especial para voce..."
             rows={5}
-            className="w-full border rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className="w-full border rounded-lg px-3 py-2 text-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
-          <div className="flex justify-between text-sm text-gray-400 mt-1">
+          <div className="flex justify-between text-base text-gray-400 mt-1">
             <span>{body.length}/1024 caracteres</span>
             {body.length > 800 && <span className="text-yellow-600">Mensagem longa</span>}
           </div>
@@ -219,8 +219,8 @@ export function CustomTemplatesPage() {
         {/* Preview */}
         {body && (
           <div className="bg-[#e5ddd5] rounded-lg p-4">
-            <p className="text-sm text-gray-500 mb-2">Anteprima WhatsApp:</p>
-            <div className="bg-white rounded-lg px-3 py-2 text-base max-w-xs shadow-sm whitespace-pre-wrap">
+            <p className="text-base text-gray-500 mb-2">Anteprima WhatsApp:</p>
+            <div className="bg-white rounded-lg px-3 py-2 text-lg max-w-xs shadow-sm whitespace-pre-wrap">
               {preview}
             </div>
           </div>
@@ -228,25 +228,25 @@ export function CustomTemplatesPage() {
 
         {/* AI Review result */}
         {aiReview && (
-          <div className={`rounded-lg p-4 text-base ${aiReview.approved ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+          <div className={`rounded-lg p-4 text-lg ${aiReview.approved ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
             <div className="flex items-center gap-2 mb-2">
               <span className="font-semibold">{aiReview.approved ? 'Aprovado pela AI' : 'Reprovado pela AI'}</span>
-              <span className={`text-sm px-2 py-0.5 rounded-full ${aiReview.score >= 70 ? 'bg-green-200 text-green-800' : aiReview.score >= 40 ? 'bg-yellow-200 text-yellow-800' : 'bg-red-200 text-red-800'}`}>
+              <span className={`text-base px-2 py-0.5 rounded-full ${aiReview.score >= 70 ? 'bg-green-200 text-green-800' : aiReview.score >= 40 ? 'bg-yellow-200 text-yellow-800' : 'bg-red-200 text-red-800'}`}>
                 Score: {aiReview.score}/100
               </span>
             </div>
             {aiReview.issues.length > 0 && (
               <div className="mb-2">
-                <p className="text-sm font-semibold text-red-700 mb-1">Problemas:</p>
-                <ul className="list-disc list-inside text-sm text-red-600 space-y-0.5">
+                <p className="text-base font-semibold text-red-700 mb-1">Problemas:</p>
+                <ul className="list-disc list-inside text-base text-red-600 space-y-0.5">
                   {aiReview.issues.map((issue, i) => <li key={i}>{issue}</li>)}
                 </ul>
               </div>
             )}
             {aiReview.suggestions.length > 0 && (
               <div>
-                <p className="text-sm font-semibold text-blue-700 mb-1">Sugestoes:</p>
-                <ul className="list-disc list-inside text-sm text-blue-600 space-y-0.5">
+                <p className="text-base font-semibold text-blue-700 mb-1">Sugestoes:</p>
+                <ul className="list-disc list-inside text-base text-blue-600 space-y-0.5">
                   {aiReview.suggestions.map((sug, i) => <li key={i}>{sug}</li>)}
                 </ul>
               </div>
@@ -259,14 +259,14 @@ export function CustomTemplatesPage() {
           <button
             onClick={handleAiReview}
             disabled={!body.trim() || reviewing}
-            className="px-4 py-2 text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-lg bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {reviewing ? 'Analisando...' : 'Revisar com AI'}
           </button>
           <button
             onClick={handleCreate}
             disabled={!name.trim() || !body.trim() || saving || (aiReview !== null && !aiReview.approved)}
-            className="px-4 py-2 text-base bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-lg bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Salvando...' : 'Criar Template'}
           </button>
@@ -275,10 +275,10 @@ export function CustomTemplatesPage() {
 
       {/* Existing custom templates */}
       <div className="space-y-3">
-        <h2 className="text-xl font-semibold text-gray-800">Seus Templates ({templates.length}/3)</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Seus Templates ({templates.length}/3)</h2>
 
         {templates.length === 0 && (
-          <p className="text-base text-gray-500">Nenhum template custom criado ainda.</p>
+          <p className="text-lg text-gray-500">Nenhum template custom criado ainda.</p>
         )}
 
         {templates.map(t => {
@@ -288,24 +288,24 @@ export function CustomTemplatesPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-gray-800">{t.name}</h3>
-                  <span className={`text-sm px-2 py-0.5 rounded-full ${statusBadge.color}`}>
+                  <span className={`text-base px-2 py-0.5 rounded-full ${statusBadge.color}`}>
                     {statusBadge.label}
                   </span>
                 </div>
                 <button
                   onClick={() => handleDelete(t.id)}
-                  className="text-sm text-red-500 hover:text-red-700"
+                  className="text-base text-red-500 hover:text-red-700"
                 >
                   Excluir
                 </button>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-3 text-base text-gray-700 whitespace-pre-wrap">
+              <div className="bg-gray-50 rounded-lg p-3 text-lg text-gray-700 whitespace-pre-wrap">
                 {t.body}
               </div>
 
               {t.metaRejectedReason && (
-                <div className="bg-red-50 rounded-lg p-3 text-sm text-red-700">
+                <div className="bg-red-50 rounded-lg p-3 text-base text-red-700">
                   <strong>Motivo da rejeicao:</strong> {t.metaRejectedReason}
                 </div>
               )}
@@ -316,21 +316,21 @@ export function CustomTemplatesPage() {
                   <button
                     onClick={() => handleSubmitToMeta(t.id)}
                     disabled={submitting === t.id}
-                    className="px-3 py-1.5 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50"
+                    className="px-3 py-1.5 text-base bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50"
                   >
                     {submitting === t.id ? 'Enviando...' : 'Enviar para Meta'}
                   </button>
                 )}
                 {t.metaStatus === 'submitted' && (
-                  <span className="text-sm text-yellow-600">Aguardando aprovacao da Meta (pode levar ate 24h)...</span>
+                  <span className="text-base text-yellow-600">Aguardando aprovacao da Meta (pode levar ate 24h)...</span>
                 )}
                 {t.metaStatus === 'approved' && (
-                  <span className="text-sm text-green-600">Pronto para usar em campanhas!</span>
+                  <span className="text-base text-green-600">Pronto para usar em campanhas!</span>
                 )}
                 {t.metaStatus === 'rejected' && (
                   <button
                     onClick={() => handleDelete(t.id)}
-                    className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    className="px-3 py-1.5 text-base bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                   >
                     Excluir e recriar
                   </button>

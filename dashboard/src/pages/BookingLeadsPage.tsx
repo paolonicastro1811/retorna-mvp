@@ -197,13 +197,13 @@ export function BookingLeadsPage() {
 
   const isToday = todayInTz === dateStr
 
-  if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Carregando...</div>
+  if (loading) return <div className="text-center py-20 text-gray-400 text-base">Carregando...</div>
 
   return (
     <div className="max-w-5xl">
       {/* Feedback toast */}
       {(error || success) && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-xl shadow-lg text-sm font-medium ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-xl shadow-lg text-base font-medium ${
           error ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
         }`}>{error || success}</div>
       )}
@@ -212,15 +212,15 @@ export function BookingLeadsPage() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-xl p-5 shadow-xl max-w-xs">
-            <p className="text-sm font-semibold text-gray-900 mb-1">Excluir reserva?</p>
-            <p className="text-sm text-gray-500 mb-4">Essa acao nao pode ser desfeita.</p>
+            <p className="text-base font-semibold text-gray-900 mb-1">Excluir reserva?</p>
+            <p className="text-base text-gray-500 mb-4">Essa acao nao pode ser desfeita.</p>
             <div className="flex gap-2">
               <button onClick={() => handleDelete(deleteConfirm)} disabled={actionLoading}
-                className="flex-1 bg-red-500 text-white py-1.5 rounded-lg text-sm font-semibold hover:bg-red-600 disabled:opacity-50">
+                className="flex-1 bg-red-500 text-white py-1.5 rounded-lg text-base font-semibold hover:bg-red-600 disabled:opacity-50">
                 {actionLoading ? 'Excluindo...' : 'Sim, excluir'}
               </button>
               <button onClick={() => setDeleteConfirm(null)}
-                className="flex-1 bg-gray-100 text-gray-600 py-1.5 rounded-lg text-sm font-semibold hover:bg-gray-200">
+                className="flex-1 bg-gray-100 text-gray-600 py-1.5 rounded-lg text-base font-semibold hover:bg-gray-200">
                 Cancelar
               </button>
             </div>
@@ -231,8 +231,8 @@ export function BookingLeadsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Reservas</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-gray-900">Reservas</h1>
+          <p className="text-base text-gray-400 mt-0.5">
             {DAY_NAMES_PT[dayOfWeek]}, {selectedDate.getDate()} de {MONTH_NAMES[selectedDate.getMonth()]} {selectedDate.getFullYear()}
           </p>
         </div>
@@ -241,7 +241,7 @@ export function BookingLeadsPage() {
       {/* Week strip */}
       <div className="flex gap-1 mb-4 bg-gray-50 rounded-xl p-1.5">
         <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 7); setSelectedDate(d) }}
-          className="px-2 py-1 text-gray-400 hover:text-gray-700 text-sm rounded-lg hover:bg-white transition-colors">&#8249;</button>
+          className="px-2 py-1 text-gray-400 hover:text-gray-700 text-base rounded-lg hover:bg-white transition-colors">&#8249;</button>
         {weekDays.map(d => {
           const ds = toDateStr(d)
           const isSelected = ds === dateStr
@@ -254,24 +254,24 @@ export function BookingLeadsPage() {
                 isSelected ? 'bg-[#25D366] text-white shadow-sm'
                   : closed ? 'text-gray-300 cursor-default' : 'hover:bg-white text-gray-600'
               }`}>
-              <div className="text-[11px] font-medium uppercase">
+              <div className="text-sm font-medium uppercase">
                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'][d.getDay()]}
               </div>
-              <div className={`text-base font-bold ${isT && !isSelected ? 'text-[#25D366]' : ''}`}>{d.getDate()}</div>
-              {closed && !isSelected && <div className="text-[10px] text-gray-300">Fechado</div>}
+              <div className={`text-lg font-bold ${isT && !isSelected ? 'text-[#25D366]' : ''}`}>{d.getDate()}</div>
+              {closed && !isSelected && <div className="text-xs text-gray-300">Fechado</div>}
             </button>
           )
         })}
         <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 7); setSelectedDate(d) }}
-          className="px-2 py-1 text-gray-400 hover:text-gray-700 text-sm rounded-lg hover:bg-white transition-colors">&#8250;</button>
+          className="px-2 py-1 text-gray-400 hover:text-gray-700 text-base rounded-lg hover:bg-white transition-colors">&#8250;</button>
       </div>
 
       {/* Reservas do dia — compact info */}
       {confirmed > 0 && (
         <div className="mb-4 bg-[#25D366]/5 border border-[#25D366]/20 rounded-xl px-4 py-2 flex items-center gap-4">
-          <span className="text-sm font-semibold text-[#1DA851]">{confirmed} reserva{confirmed > 1 ? 's' : ''} confirmada{confirmed > 1 ? 's' : ''}</span>
-          <span className="text-sm text-gray-400">·</span>
-          <span className="text-sm text-gray-500">{totalCovers} pessoas</span>
+          <span className="text-base font-semibold text-[#1DA851]">{confirmed} reserva{confirmed > 1 ? 's' : ''} confirmada{confirmed > 1 ? 's' : ''}</span>
+          <span className="text-base text-gray-400">·</span>
+          <span className="text-base text-gray-500">{totalCovers} pessoas</span>
         </div>
       )}
 
@@ -279,14 +279,14 @@ export function BookingLeadsPage() {
       {isClosed && hours.length > 0 ? (
           <div className="text-center py-16">
             <div className="text-3xl mb-2">🔒</div>
-            <p className="text-base text-gray-400 font-medium">Restaurante fechado</p>
-            <p className="text-sm text-gray-300 mt-1">{DAY_NAMES_PT[dayOfWeek]}</p>
+            <p className="text-lg text-gray-400 font-medium">Restaurante fechado</p>
+            <p className="text-base text-gray-300 mt-1">{DAY_NAMES_PT[dayOfWeek]}</p>
           </div>
         ) : tables.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-3xl mb-2">🪑</div>
-            <p className="text-base text-gray-400 font-medium">Nenhuma mesa configurada</p>
-            <p className="text-sm text-gray-300 mt-1">Va em Configuracoes para criar as mesas do restaurante</p>
+            <p className="text-lg text-gray-400 font-medium">Nenhuma mesa configurada</p>
+            <p className="text-base text-gray-300 mt-1">Va em Configuracoes para criar as mesas do restaurante</p>
           </div>
         ) : (
           <div className="flex gap-4">
@@ -349,7 +349,7 @@ export function BookingLeadsPage() {
                       onClick={() => { setEditId(isSelected ? null : table.id); setSlotEditing(null) }}
                     >
                       <span className="text-[12px] font-bold text-gray-700 leading-none">{table.tableNumber}</span>
-                      <span className="text-[10px] text-gray-500 leading-none">{table.seats}p</span>
+                      <span className="text-xs text-gray-500 leading-none">{table.seats}p</span>
                       {table.label && <span className="text-[7px] text-gray-400 leading-none mt-0.5">{table.label}</span>}
                       {statusLabel && (
                         <span className={`text-[7px] font-semibold leading-none mt-0.5 ${
@@ -362,10 +362,10 @@ export function BookingLeadsPage() {
               </div>
 
               <div className="flex items-center justify-center gap-4 mt-2">
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#D1FAE5] border border-[#25D366]" /><span className="text-[11px] text-gray-400">Livre</span></div>
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#FEF3C7] border border-[#F59E0B]" /><span className="text-[11px] text-gray-400">Em breve</span></div>
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#FEE2E2] border border-[#EF4444]" /><span className="text-[11px] text-gray-400">Ocupada</span></div>
-                <span className="text-[10px] text-gray-300 ml-2">Clique para detalhes</span>
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#D1FAE5] border border-[#25D366]" /><span className="text-sm text-gray-400">Livre</span></div>
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#FEF3C7] border border-[#F59E0B]" /><span className="text-sm text-gray-400">Em breve</span></div>
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#FEE2E2] border border-[#EF4444]" /><span className="text-sm text-gray-400">Ocupada</span></div>
+                <span className="text-xs text-gray-300 ml-2">Clique para detalhes</span>
               </div>
             </div>
 
@@ -380,18 +380,18 @@ export function BookingLeadsPage() {
                 <div className="w-56 shrink-0 bg-white rounded-xl border border-gray-100 shadow-sm p-4 self-start max-h-[480px] overflow-y-auto">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-[#D1FAE5] border-2 border-[#25D366] flex items-center justify-center text-sm font-bold text-gray-700">
+                      <div className="w-8 h-8 rounded-lg bg-[#D1FAE5] border-2 border-[#25D366] flex items-center justify-center text-base font-bold text-gray-700">
                         {selectedT.tableNumber}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-800">Mesa {selectedT.tableNumber}</p>
-                        <p className="text-[11px] text-gray-400">{selectedT.seats} lugares {selectedT.label ? `· ${selectedT.label}` : ''}</p>
+                        <p className="text-base font-bold text-gray-800">Mesa {selectedT.tableNumber}</p>
+                        <p className="text-sm text-gray-400">{selectedT.seats} lugares {selectedT.label ? `· ${selectedT.label}` : ''}</p>
                       </div>
                     </div>
-                    <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600 text-base">✕</button>
+                    <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
                   </div>
 
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Horarios do dia</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Horarios do dia</p>
 
                   <div className="space-y-1">
                     {timeSlots.map(slot => {
@@ -406,7 +406,7 @@ export function BookingLeadsPage() {
                       return (
                         <div key={slot}>
                           <div
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm cursor-pointer transition-all ${
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-base cursor-pointer transition-all ${
                               isBooked
                                 ? `bg-red-50 border ${isCurrentSlot ? 'border-red-300 shadow-sm' : 'border-red-100'} hover:bg-red-100`
                                 : `bg-green-50 border ${isCurrentSlot ? 'border-green-300 shadow-sm' : 'border-green-100'} hover:bg-green-100`
@@ -432,32 +432,32 @@ export function BookingLeadsPage() {
                             ) : (
                               <span className="text-green-600 font-medium flex-1">Livre</span>
                             )}
-                            <span className="text-[10px] text-gray-300">{isEditingSlot ? '▲' : '▼'}</span>
+                            <span className="text-xs text-gray-300">{isEditingSlot ? '▲' : '▼'}</span>
                           </div>
 
                           {/* Inline editor — FREE slot: add reservation */}
                           {isEditingSlot && !isBooked && (
                             <div className="mt-1 p-2 bg-green-50/50 border border-green-200 rounded-lg space-y-1.5">
-                              <p className="text-[11px] font-semibold text-green-700">Nova reserva — {slot}</p>
+                              <p className="text-sm font-semibold text-green-700">Nova reserva — {slot}</p>
                               <input
                                 type="text" placeholder="Nome" value={slotName}
                                 onChange={e => setSlotName(e.target.value)}
-                                className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#25D366]"
+                                className="w-full border border-gray-200 rounded px-2 py-1 text-base focus:outline-none focus:ring-1 focus:ring-[#25D366]"
                                 onClick={e => e.stopPropagation()}
                               />
                               <input
                                 type="tel" placeholder="Telefone *" value={slotPhone}
                                 onChange={e => setSlotPhone(e.target.value)}
-                                className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#25D366]"
+                                className="w-full border border-gray-200 rounded px-2 py-1 text-base focus:outline-none focus:ring-1 focus:ring-[#25D366]"
                                 onClick={e => e.stopPropagation()}
                               />
                               <div className="flex items-center gap-1">
-                                <span className="text-[11px] text-gray-500">Pessoas:</span>
+                                <span className="text-sm text-gray-500">Pessoas:</span>
                                 <button onClick={e => { e.stopPropagation(); setSlotParty(p => Math.max(1, p - 1)) }}
-                                  className="w-5 h-5 rounded bg-gray-100 text-gray-600 text-sm font-bold hover:bg-gray-200">−</button>
-                                <span className="text-sm font-bold text-gray-700 w-4 text-center">{slotParty}</span>
+                                  className="w-5 h-5 rounded bg-gray-100 text-gray-600 text-base font-bold hover:bg-gray-200">−</button>
+                                <span className="text-base font-bold text-gray-700 w-4 text-center">{slotParty}</span>
                                 <button onClick={e => { e.stopPropagation(); setSlotParty(p => Math.min(20, p + 1)) }}
-                                  className="w-5 h-5 rounded bg-gray-100 text-gray-600 text-sm font-bold hover:bg-gray-200">+</button>
+                                  className="w-5 h-5 rounded bg-gray-100 text-gray-600 text-base font-bold hover:bg-gray-200">+</button>
                               </div>
                               <button
                                 disabled={slotSaving || !slotPhone.trim()}
@@ -485,7 +485,7 @@ export function BookingLeadsPage() {
                                     setError(err instanceof Error ? err.message : 'Erro ao criar reserva')
                                   } finally { setSlotSaving(false) }
                                 }}
-                                className="w-full bg-[#25D366] text-white py-1 rounded text-sm font-semibold hover:bg-[#1DA851] disabled:opacity-50 transition-colors"
+                                className="w-full bg-[#25D366] text-white py-1 rounded text-base font-semibold hover:bg-[#1DA851] disabled:opacity-50 transition-colors"
                               >
                                 {slotSaving ? 'Salvando...' : 'Reservar'}
                               </button>
@@ -496,10 +496,10 @@ export function BookingLeadsPage() {
                           {isEditingSlot && isBooked && res && (
                             <div className="mt-1 p-2 bg-red-50/50 border border-red-200 rounded-lg space-y-1.5">
                               <div className="space-y-0.5">
-                                <p className="text-sm font-semibold text-gray-800">{res.customerName || 'Sem nome'}</p>
-                                <p className="text-[11px] text-gray-500">{res.phone}</p>
-                                <p className="text-[11px] text-gray-500">{res.partySize} pessoa{res.partySize > 1 ? 's' : ''} · {STATUS_MAP[res.status]?.label}</p>
-                                {res.notes && <p className="text-[11px] text-gray-400 italic">{res.notes}</p>}
+                                <p className="text-base font-semibold text-gray-800">{res.customerName || 'Sem nome'}</p>
+                                <p className="text-sm text-gray-500">{res.phone}</p>
+                                <p className="text-sm text-gray-500">{res.partySize} pessoa{res.partySize > 1 ? 's' : ''} · {STATUS_MAP[res.status]?.label}</p>
+                                {res.notes && <p className="text-sm text-gray-400 italic">{res.notes}</p>}
                               </div>
                               <button
                                 disabled={actionLoading}
@@ -508,7 +508,7 @@ export function BookingLeadsPage() {
                                   await handleStatusChange(res.id, 'cancelled')
                                   setSlotEditing(null)
                                 }}
-                                className="w-full bg-red-500 text-white py-1 rounded text-[11px] font-semibold disabled:opacity-50 hover:bg-red-600"
+                                className="w-full bg-red-500 text-white py-1 rounded text-sm font-semibold disabled:opacity-50 hover:bg-red-600"
                               >{actionLoading ? 'Cancelando...' : 'Cancelar reserva'}</button>
                             </div>
                           )}
@@ -518,7 +518,7 @@ export function BookingLeadsPage() {
                   </div>
 
                   {timeSlots.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-4">Nenhum horario configurado para este dia</p>
+                    <p className="text-base text-gray-400 text-center py-4">Nenhum horario configurado para este dia</p>
                   )}
                 </div>
               )
