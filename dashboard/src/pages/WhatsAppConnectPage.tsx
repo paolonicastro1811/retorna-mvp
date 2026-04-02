@@ -105,16 +105,17 @@ export default function WhatsAppConnectPage() {
       (response: FBLoginResponse) => {
         console.log('[WA Connect] FB.login response:', JSON.stringify(response))
         if (response.authResponse) {
+          const accessToken = response.authResponse.accessToken
           const code = response.authResponse.code
-          console.log('[WA Connect] Got code, waiting for signup data...')
+          console.log('[WA Connect] Got auth response, accessToken=' + (accessToken ? 'yes' : 'no') + ' code=' + (code ? 'yes' : 'no'))
 
           // Small delay to allow the WA_EMBEDDED_SIGNUP message to arrive
           setTimeout(() => {
             const payload = {
-              code,
+              access_token: accessToken || '',
+              code: code || '',
               waba_id: signupDataRef.current?.waba_id || '',
               phone_number_id: signupDataRef.current?.phone_number_id || '',
-              redirect_uri: window.location.href.split('#')[0].split('?')[0],
             }
             console.log('[WA Connect] Sending to backend:', JSON.stringify(payload))
 

@@ -17,8 +17,10 @@ router.post('/connect', async (req: Request, res: Response) => {
     const user = (req as any).user;
     if (!user) return res.status(401).json({ error: 'Nao autorizado' });
 
-    const { code } = req.body;
-    if (!code) return res.status(400).json({ error: 'Codigo de autorizacao necessario' });
+    const { code, access_token: directToken } = req.body;
+    if (!code && !directToken) {
+      return res.status(400).json({ error: 'Codigo de autorizacao ou access_token necessario' });
+    }
 
     const FB_APP_ID = process.env.FB_APP_ID;
     const FB_APP_SECRET = process.env.FB_APP_SECRET;
@@ -27,41 +29,31 @@ router.post('/connect', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Facebook App nao configurado no servidor' });
     }
 
-    // 1. Exchange code for token
-    // Try multiple redirect_uri strategies: page URL, empty, omitted
-    const frontendUri = req.body.redirect_uri || '';
+    // 1. Get access token — either directly from frontend or by exchanging the code
+    let accessToken = directToken || '';
 
-    // Strategy 1: Use the page URL from frontend (SDK may use this internally)
-    // Strategy 2: Empty string (Meta Embedded Signup docs)
-    // Strategy 3: No redirect_uri at all
-    const strategies = [
-      { label: 'page_url', uri: frontendUri },
-      { label: 'empty', uri: '' },
-      { label: 'omitted', uri: null },
-    ];
-
-    let tokenData: any = null;
-    for (const strategy of strategies) {
-      const uriParam = strategy.uri !== null ? `&redirect_uri=${encodeURIComponent(strategy.uri)}` : '';
-      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}${uriParam}`;
-      console.log(`[WhatsApp Connect] Trying strategy="${strategy.label}" redirect_uri=${strategy.uri === null ? '(omitted)' : `"${strategy.uri}"`}`);
+    if (!accessToken && code) {
+      // Exchange code for token — try without redirect_uri (Embedded Signup)
+      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}`;
+      console.log(`[WhatsApp Connect] Exchanging code for token...`);
 
       const tokenRes = await fetch(tokenUrl);
-      tokenData = await tokenRes.json() as any;
+      const tokenData = await tokenRes.json() as any;
 
-      if (!tokenData.error) {
-        console.log(`[WhatsApp Connect] Strategy "${strategy.label}" succeeded!`);
-        break;
+      if (tokenData.error) {
+        console.error('[WhatsApp Connect] Code exchange failed:', JSON.stringify(tokenData.error));
+        // Try exchanging as fb_exchange_token (short-lived → long-lived)
+        // This is a fallback in case the code is actually a short-lived token
+        return res.status(400).json({ error: `Falha na autorizacao: ${tokenData.error.message || 'Token exchange failed'}` });
       }
-      console.log(`[WhatsApp Connect] Strategy "${strategy.label}" failed: ${tokenData.error?.message || JSON.stringify(tokenData.error)}`);
+      accessToken = tokenData.access_token;
     }
 
-    if (!tokenData || tokenData.error) {
-      console.error('[WhatsApp Connect] All strategies failed:', JSON.stringify(tokenData?.error));
-      return res.status(400).json({ error: `Falha na autorizacao: ${tokenData?.error?.message || 'Token exchange failed'}` });
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Nao foi possivel obter access token' });
     }
 
-    const accessToken = tokenData.access_token;
+    console.log(`[WhatsApp Connect] Got access token (length=${accessToken.length})`);
 
     // 2. Get waba_id and phone_number_id
     // Try from frontend first (postMessage), otherwise auto-discover via Graph API
