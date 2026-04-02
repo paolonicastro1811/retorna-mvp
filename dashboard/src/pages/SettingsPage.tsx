@@ -404,21 +404,26 @@ export function SettingsPage() {
               const meta = TEMPLATE_ORDER[tpl.name]
               const isConsent = tpl.name === 'Pós-visita + Consentimento'
               return (
-              <div key={tpl.id} className={`border rounded-lg p-2 transition-all ${tpl.isActive ? 'border-[#25D366] bg-white' : 'border-gray-200 bg-gray-100/50'}`}>
+              <div key={tpl.id} className={`border rounded-lg p-2 transition-all ${isConsent ? 'border-red-300 bg-red-50/50' : tpl.isActive ? 'border-[#25D366] bg-white' : 'border-gray-200 bg-gray-100/50'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <span className={`text-sm font-semibold ${tpl.isActive ? 'text-gray-900' : 'text-gray-400'}`}>{tpl.name}</span>
                     {isConsent ? (
-                      <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">Obrigatório (Meta)</span>
+                      <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700">Obrigatório</span>
                     ) : (
                       <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${tpl.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
                         {tpl.isActive ? 'Ativo' : 'Inativo'}
                       </span>
                     )}
-                    {meta && <p className="text-xs text-gray-400 mt-0.5">{meta.desc}{isConsent ? ' — necessário para conformidade Meta' : ''}</p>}
+                    {meta && <p className="text-xs text-gray-400 mt-0.5">{meta.desc}</p>}
+                    {isConsent && <p className="text-xs text-red-500 mt-0.5">Necessário para conformidade Meta — não pode ser desativado</p>}
                   </div>
                   {isConsent ? (
-                    <div className="relative w-10 h-5 rounded-full bg-[#25D366] opacity-60 cursor-not-allowed">
+                    <div
+                      className="relative w-10 h-5 rounded-full bg-red-400 cursor-not-allowed"
+                      title="Obrigatório para conformidade Meta"
+                      onClick={() => alert('Este template é obrigatório para conformidade com as políticas da Meta. Não pode ser desativado.')}
+                    >
                       <span className="absolute top-0.5 left-[22px] w-4 h-4 bg-white rounded-full shadow" />
                     </div>
                   ) : (
