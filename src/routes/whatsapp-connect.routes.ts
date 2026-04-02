@@ -27,9 +27,34 @@ router.post('/connect', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Facebook App nao configurado no servidor' });
     }
 
-    // 1. Exchange code for token (Embedded Signup: redirect_uri must be present but empty)
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&redirect_uri=&code=${code}`;
-    console.log(`[WhatsApp Connect] Token exchange URL (without secrets): graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&redirect_uri=&code=${code.substring(0, 20)}...`);
+    // 1. Exchange code for token
+    // Try multiple redirect_uri strategies: page URL, empty, omitted
+    const frontendUri = req.body.redirect_uri || '';
+
+    // Strategy 1: Use the page URL from frontend (SDK may use this internally)
+    // Strategy 2: Empty string (Meta Embedded Signup docs)
+    // Strategy 3: No redirect_uri at all
+    const strategies = [
+      { label: 'page_url', uri: frontendUri },
+      { label: 'empty', uri: '' },
+      { label: 'omitted', uri: null },
+    ];
+
+    let tokenData: any = null;
+    for (const strategy of strategies) {
+      const uriParam = strategy.uri !== null ? `&redirect_uri=${encodeURIComponent(strategy.uri)}` : '';
+      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}${uriParam}`;
+      console.log(`[WhatsApp Connect] Trying strategy="${strategy.label}" redirect_uri=${strategy.uri === null ? '(omitted)' : `"${strategy.uri}"`}`);
+
+      const tokenRes = await fetch(tokenUrl);
+      tokenData = await tokenRes.json() as any;
+
+      if (!tokenData.error) {
+        console.log(`[WhatsApp Connect] Strategy "${strategy.label}" succeeded!`);
+        break;
+      }
+      console.log(`[WhatsApp Connect] Strategy "${strategy.label}" failed: ${tokenData.error?.message || JSON.stringify(tokenData.error)}`);
+    }
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json() as any;
 
