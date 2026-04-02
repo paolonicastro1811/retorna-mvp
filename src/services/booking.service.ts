@@ -13,15 +13,25 @@ function timeToMinutes(time: string): number {
   return h * 60 + m;
 }
 
+function isValidTimezone(tz: string): boolean {
+  try { Intl.DateTimeFormat(undefined, { timeZone: tz }); return true; } catch { return false; }
+}
+
+function safeTz(tz: string | null | undefined): string {
+  return tz && isValidTimezone(tz) ? tz : "America/Sao_Paulo";
+}
+
 /**
  * Get the day-of-week for a date string in a given IANA timezone.
+ * Uses UTC midnight + Intl for correct local weekday (0=Sunday).
  */
 function getDayOfWeekInTimezone(dateStr: string, timezone: string): number {
-  const d = new Date(dateStr + "T12:00:00");
-  const formatter = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: timezone });
-  const dayName = formatter.format(d);
+  const tz = safeTz(timezone);
+  const d = new Date(dateStr + "T00:00:00Z");
+  const parts = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: tz }).formatToParts(d);
+  const dayName = parts.find(p => p.type === "weekday")?.value ?? "";
   const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return map[dayName] ?? d.getDay();
+  return map[dayName] ?? 0;
 }
 
 export interface AvailabilitySlot {
@@ -103,7 +113,7 @@ export const bookingService = {
       select: { timezone: true, avgMealDurationMinutes: true },
     });
     const timezone = restaurant?.timezone ?? "America/Sao_Paulo";
-    const mealDuration = restaurant?.avgMealDurationMinutes ?? 90;
+    const mealDuration = restaurant?.avgMealDurationMinutes || 90;
 
     // Parse without "Z" — treat as local time
     const date = new Date(dateStr + "T00:00:00");
@@ -225,7 +235,7 @@ export const bookingService = {
       select: { timezone: true, avgMealDurationMinutes: true },
     });
     const timezone = restaurant?.timezone ?? "America/Sao_Paulo";
-    const mealDuration = restaurant?.avgMealDurationMinutes ?? 90;
+    const mealDuration = restaurant?.avgMealDurationMinutes || 90;
 
     // Check restaurant is open
     const dayOfWeek = getDayOfWeekInTimezone(booking.date, timezone);

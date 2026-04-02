@@ -18,19 +18,13 @@ router.get("/:restaurantId/live-stats", async (req: Request, res: Response) => {
   });
   const tz = restaurant?.timezone || "America/Sao_Paulo";
 
-  // Calculate "today" boundaries in restaurant timezone
-  const nowInTz = new Date(
-    new Date().toLocaleString("en-US", { timeZone: tz })
-  );
-  const todayStart = new Date(nowInTz);
-  todayStart.setHours(0, 0, 0, 0);
-  const tomorrowStart = new Date(todayStart);
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-
-  // Convert back to UTC for DB queries
-  const offsetMs = nowInTz.getTime() - Date.now();
-  const todayStartUtc = new Date(todayStart.getTime() - offsetMs);
-  const tomorrowStartUtc = new Date(tomorrowStart.getTime() - offsetMs);
+  // Calculate "today" boundaries in restaurant timezone using Intl
+  const now = new Date();
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(now); // returns "YYYY-MM-DD"
+  const todayStartUtc = new Date(dateParts + "T00:00:00Z");
+  const tomorrowStartUtc = new Date(todayStartUtc.getTime() + 24 * 60 * 60 * 1000);
 
   // Run all queries in parallel
   const [

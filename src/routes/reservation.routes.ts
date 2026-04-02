@@ -18,17 +18,25 @@ function addMinutes(time: string, mins: number): string {
   return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
+function isValidTimezone(tz: string): boolean {
+  try { Intl.DateTimeFormat(undefined, { timeZone: tz }); return true; } catch { return false; }
+}
+
+function safeTz(tz: string | null | undefined): string {
+  return tz && isValidTimezone(tz) ? tz : "America/Sao_Paulo";
+}
+
 /**
  * Get the day-of-week for a date string in a given IANA timezone.
- * Uses Intl to derive the local weekday (0=Sunday).
+ * Uses UTC midnight + Intl to derive the correct local weekday (0=Sunday).
  */
 function getDayOfWeekInTimezone(dateStr: string, timezone: string): number {
-  // Parse as local date in the given timezone
-  const d = new Date(dateStr + "T12:00:00"); // noon to avoid DST edge cases
-  const formatter = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: timezone });
-  const dayName = formatter.format(d);
+  const tz = safeTz(timezone);
+  const d = new Date(dateStr + "T00:00:00Z"); // UTC midnight
+  const parts = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: tz }).formatToParts(d);
+  const dayName = parts.find(p => p.type === "weekday")?.value ?? "";
   const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return map[dayName] ?? d.getDay();
+  return map[dayName] ?? 0;
 }
 
 // GET /:restaurantId/reservations?date=2026-03-30
@@ -42,7 +50,7 @@ router.get("/:restaurantId/reservations", async (req: Request, res: Response) =>
       where: { id: restaurantId },
       select: { avgMealDurationMinutes: true },
     });
-    const durationMs = (restaurant?.avgMealDurationMinutes ?? 90) * 60 * 1000;
+    const durationMs = (restaurant?.avgMealDurationMinutes || 90) * 60 * 1000;
     const cutoff = new Date(Date.now() - durationMs);
 
     await prisma.reservation.updateMany({
@@ -106,7 +114,7 @@ router.post("/:restaurantId/reservations", async (req: Request, res: Response) =
     });
     if (!restaurant) return res.status(404).json({ error: "Restaurant not found" });
 
-    const mealDuration = restaurant.avgMealDurationMinutes ?? 90;
+    const mealDuration = restaurant.avgMealDurationMinutes || 90;
 
     // FIX 1: Validate operating hours
     const dayOfWeek = getDayOfWeekInTimezone(date, restaurant.timezone);
@@ -114,17 +122,17 @@ router.post("/:restaurantId/reservations", async (req: Request, res: Response) =
       where: { restaurantId_dayOfWeek: { restaurantId, dayOfWeek } },
     });
 
-    if (hours?.isClosed) {
+    if (!hours) {
+      return res.status(400).json({ error: "Horários do restaurante não configurados para este dia" });
+    }
+    if (hours.isClosed) {
       return res.status(400).json({ error: "Restaurante fechado neste dia" });
     }
-
-    if (hours) {
-      const bookMin = timeToMinutes(time);
-      const openMin = timeToMinutes(hours.openTime);
-      const closeMin = timeToMinutes(hours.closeTime);
-      if (bookMin < openMin || bookMin >= closeMin) {
-        return res.status(400).json({ error: "Horário fora do funcionamento" });
-      }
+    const bookMin = timeToMinutes(time);
+    const openMin = timeToMinutes(hours.openTime);
+    const closeMin = timeToMinutes(hours.closeTime);
+    if (bookMin < openMin || bookMin >= closeMin) {
+      return res.status(400).json({ error: `Horário fora do funcionamento (${hours.openTime}-${hours.closeTime})` });
     }
 
     const safePartySize = Math.max(1, Math.min(50, parseInt(partySize) || 2));
@@ -293,7 +301,7 @@ router.get("/:restaurantId/reservations/availability", async (req: Request, res:
       where: { id: restaurantId },
       select: { timezone: true, avgMealDurationMinutes: true },
     });
-    const mealDuration = restaurant?.avgMealDurationMinutes ?? 90;
+    const mealDuration = restaurant?.avgMealDurationMinutes || 90;
 
     // Use restaurant timezone for day-of-week calculation
     const dayOfWeek = getDayOfWeekInTimezone(dateStr, restaurant?.timezone ?? "America/Sao_Paulo");

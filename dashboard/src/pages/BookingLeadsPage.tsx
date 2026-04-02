@@ -58,8 +58,8 @@ function getWeekDays(center: Date): Date[] {
   })
 }
 
-// Get current time in restaurant timezone (America/Sao_Paulo)
-const RESTAURANT_TZ = 'America/Sao_Paulo'
+// Get current time in restaurant timezone (fetched from API, fallback to Sao Paulo)
+let RESTAURANT_TZ = 'America/Sao_Paulo'
 function getNowInRestaurantTz(): { hours: number; minutes: number; dateStr: string } {
   const now = new Date()
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -114,7 +114,15 @@ export function BookingLeadsPage() {
   }, [])
 
   const dateStr = toDateStr(selectedDate)
-  const dayOfWeek = selectedDate.getDay()
+  // Use restaurant timezone for day-of-week
+  const dayOfWeek = (() => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: RESTAURANT_TZ }).formatToParts(selectedDate)
+      const day = parts.find(p => p.type === 'weekday')?.value ?? ''
+      const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+      return map[day] ?? selectedDate.getDay()
+    } catch { return selectedDate.getDay() }
+  })()
   const todayHours = hours.find(h => h.dayOfWeek === dayOfWeek)
   const isClosed = todayHours?.isClosed ?? true
   const timeSlots = todayHours && !isClosed ? generateTimeSlots(todayHours.openTime, todayHours.closeTime) : []
@@ -131,9 +139,11 @@ export function BookingLeadsPage() {
     Promise.all([
       api<Table[]>(`/restaurants/${restaurantId}/tables`),
       api<Hour[]>(`/restaurants/${restaurantId}/hours`),
-    ]).then(([t, h]) => {
+      api<{ timezone: string }>(`/restaurants/${restaurantId}`),
+    ]).then(([t, h, r]) => {
       setTables(t)
       setHours(h)
+      if (r.timezone) RESTAURANT_TZ = r.timezone
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
