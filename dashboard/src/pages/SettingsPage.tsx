@@ -30,7 +30,7 @@ const TEMPLATE_ORDER: Record<string, { order: number; desc: string; previewVisit
   'Metade do caminho': { order: 2, desc: 'Ao completar 5 visitas', previewVisits: '5' },
   'Recompensa 10 visitas': { order: 3, desc: '10% desconto ao completar 10 visitas', previewVisits: '10' },
   'Desconto surpresa': { order: 4, desc: 'Desconto aleatorio para fieis', previewVisits: '8' },
-  'Cliente VIP — 20% desconto': { order: 5, desc: 'A cada 20 visitas: 20% desconto', previewVisits: '20' },
+  'Cliente VIP — 20% desconto': { order: 5, desc: 'A cada 20 visitas (20, 40, 60...): 20% desconto', previewVisits: '20' },
   'Reativacao': { order: 6, desc: 'Com opt-in, sem visita ha 30+ dias', previewVisits: '12' },
 }
 
