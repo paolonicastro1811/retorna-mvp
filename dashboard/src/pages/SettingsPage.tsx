@@ -75,11 +75,11 @@ const PLANS = [
     features: [
       'Painel de clientes com lifecycle',
       'Registro de visitas e fidelidade',
-      'Mensagens automáticas via WhatsApp',
-      'Templates personalizáveis',
+      '6 mensagens automáticas pré-configuradas',
       'Conformidade LGPD',
     ],
     notIncluded: [
+      'Templates personalizados',
       'AI conversacional 24/7',
       'Reservas automáticas',
       'Mapa de mesas',
@@ -94,6 +94,7 @@ const PLANS = [
     desc: 'AI responde, reserva e reativa clientes',
     features: [
       'Tudo do Plano Manual',
+      'Templates personalizados com revisão AI',
       'AI conversacional 24/7 via WhatsApp',
       'Reservas automáticas com confirmação',
       'Mapa de mesas interativo',
@@ -434,9 +435,16 @@ export function SettingsPage() {
             })}
           </div>
 
-          {/* ── Custom Templates ── */}
+          {/* ── Custom Templates (Plan B only) ── */}
           <div className="mt-5 pt-4 border-t border-gray-200">
             <h3 className="text-sm font-bold text-gray-800 mb-2">Templates Personalizados</h3>
+            {!isPlanB ? (
+              <div className="bg-gray-100 rounded-lg p-3 text-center">
+                <p className="text-xs text-gray-500">Disponível no Plano Automático.</p>
+                <button onClick={() => setActiveTab(5)} className="text-xs text-[#25D366] font-semibold mt-1 hover:underline">Ver planos</button>
+              </div>
+            ) : (
+            <>
             <p className="text-xs text-gray-400 mb-3">Crie mensagens personalizadas para campanhas. Cada template passa por revisão de AI e aprovação da Meta.</p>
 
             {/* Campaign limits */}
@@ -602,6 +610,8 @@ export function SettingsPage() {
                 })}
               </div>
             )}
+            </>
+            )}
           </div>
         </div>
       </section>
@@ -731,10 +741,6 @@ export function SettingsPage() {
       </section>
       )}
 
-      {/* Info */}
-      <div className="border-t border-gray-200 pt-4 mt-6">
-        <p className="text-sm text-gray-400">Restaurant ID: {restaurant.id}</p>
-      </div>
     </div>
   )
 }
