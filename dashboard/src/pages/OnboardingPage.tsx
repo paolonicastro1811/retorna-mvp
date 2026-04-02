@@ -28,6 +28,7 @@ export function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [checkingPhone, setCheckingPhone] = useState(false)
 
   // Plan B fields
   const [tableRows, setTableRows] = useState<TableRow[]>([{ seats: 2, qty: 2 }, { seats: 4, qty: 2 }])
@@ -184,9 +185,38 @@ export function OnboardingPage() {
                   className="w-full border border-gray-300 rounded-r-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
               </div>
             </div>
-            <button onClick={() => setStep(2)} disabled={!name.trim() || !phone.trim()}
+            {error && step === 1 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                {error}
+                {error.includes('já está cadastrado') && (
+                  <button onClick={() => navigate('/login')} className="block mt-2 text-[#25D366] font-semibold hover:underline">
+                    Ir para o login
+                  </button>
+                )}
+              </div>
+            )}
+            <button onClick={async () => {
+              setError(null)
+              setCheckingPhone(true)
+              try {
+                const fullPhone = phone.trim().startsWith('+') ? phone.trim() : `+55${phone.trim()}`
+                const res = await api<{ exists: boolean; message?: string }>('/restaurants/check-duplicate', {
+                  method: 'POST',
+                  body: JSON.stringify({ phone: fullPhone }),
+                })
+                if (res.exists) {
+                  setError(res.message + ' Faça login para acessar seu painel.')
+                  return
+                }
+                setStep(2)
+              } catch {
+                setStep(2) // if check fails, let them proceed
+              } finally {
+                setCheckingPhone(false)
+              }
+            }} disabled={!name.trim() || !phone.trim() || checkingPhone}
               className="w-full bg-[#25D366] text-white py-3 rounded-lg font-semibold text-base hover:bg-[#1DA851] disabled:opacity-40 transition-colors mt-2">
-              Próximo
+              {checkingPhone ? 'Verificando...' : 'Próximo'}
             </button>
           </div>
         )}

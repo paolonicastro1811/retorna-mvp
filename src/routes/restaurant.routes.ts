@@ -11,6 +11,28 @@ import { createRestaurantSchema } from "../schemas";
 
 const router = Router();
 
+// Check if phone or email already exists (public — used by onboarding step 1)
+router.post("/check-duplicate", async (req: Request, res: Response) => {
+  const { phone, email } = req.body;
+
+  if (phone) {
+    const normalized = phone.trim().startsWith('+') ? phone.trim() : `+55${phone.trim()}`;
+    const existing = await prisma.restaurant.findFirst({ where: { phone: normalized } });
+    if (existing) {
+      return res.json({ exists: true, field: "phone", message: "Este número de WhatsApp já está cadastrado." });
+    }
+  }
+
+  if (email) {
+    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+    if (existing) {
+      return res.json({ exists: true, field: "email", message: "Este email já está cadastrado." });
+    }
+  }
+
+  res.json({ exists: false });
+});
+
 router.get("/", async (_req: Request, res: Response) => {
   const restaurants = await restaurantRepository.findAll();
   res.json(restaurants);
