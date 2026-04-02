@@ -19,6 +19,7 @@ import { reservationRouter } from "./routes/reservation.routes";
 import { runLifecycleRefresh } from "./jobs/lifecycleRefresh.job";
 import { runPostVisitConsent } from "./jobs/postVisitConsent.job";
 import { runDailyAutomation } from "./services/loyalty.service";
+import { runSurpriseDiscount } from "./jobs/surpriseDiscount.job";
 import { liveStatsRouter } from "./routes/liveStats.routes";
 import whatsappConnectRouter from "./routes/whatsapp-connect.routes";
 import { prisma } from "./database/client";
@@ -269,6 +270,18 @@ cron.schedule("0 10 * * *", async () => {
     console.log(`[Cron:Loyalty] Done: ${result.sent} messages sent`);
   } catch (err) {
     console.error("[Cron:Loyalty] Error:", err);
+  }
+});
+
+// Surprise discount: todo dia as 14:00 — random discounts to opted-in customers
+cron.schedule("0 14 * * *", async () => {
+  try {
+    const result = await runSurpriseDiscount();
+    if (result.sent > 0 || result.errors > 0) {
+      console.log(`[Cron:SurpriseDiscount] ${result.sent} sent, ${result.errors} errors`);
+    }
+  } catch (err) {
+    console.error("[Cron:SurpriseDiscount] Error:", err);
   }
 });
 
