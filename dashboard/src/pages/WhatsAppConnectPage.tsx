@@ -114,6 +114,7 @@ export default function WhatsAppConnectPage() {
               code,
               waba_id: signupDataRef.current?.waba_id || '',
               phone_number_id: signupDataRef.current?.phone_number_id || '',
+              redirect_uri: window.location.origin,
             }
             console.log('[WA Connect] Sending to backend:', JSON.stringify(payload))
 
