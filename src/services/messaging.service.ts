@@ -214,11 +214,10 @@ async function getRestaurantCredentials(restaurantId: string): Promise<WhatsAppC
 }
 
 function extractTemplateParams(body: string): string[] {
-  // The body is already interpolated; extract the name before LGPD footer
+  // The body is already interpolated; extract the customer name before LGPD footer.
+  // Meta templates use named variables like {{customer_name}}.
+  // We extract the first name after common greetings in the interpolated body.
   const withoutFooter = body.replace(LGPD_MESSAGE_FOOTER, "").trim();
-  // For now, the only parameter is the customer name.
-  // This matches the standard reactivation template: "Oi {{1}}, ..."
-  // We extract the first word/name after common greetings
   const nameMatch = withoutFooter.match(/^(?:Oi|Ola|Olá|E aí|Fala),?\s+([^!,.]+)/i);
   return nameMatch ? [nameMatch[1].trim()] : ["Cliente"];
 }

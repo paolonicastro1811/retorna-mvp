@@ -23,7 +23,7 @@ const LOYALTY_TEMPLATES = [
   {
     name: "Obrigado pela visita",
     templateKey: "post_visit_thanks",
-    body: "Oi {{nome}}! Obrigado pela visita de hoje 😊 Voce ja tem {{visitas}} visitas! {{progresso_tier}} Responda VER para conferir seus beneficios.",
+    body: "Oi {{customer_name}}, obrigado por ter nos visitado! 😊 Foi um prazer te receber.\n\nGostaria de receber ofertas exclusivas e novidades do nosso restaurante? Sem spam, so coisas boas — enviaremos apenas quando tivermos algo especial para voce.\n\nResponda *SIM* para receber ou simplesmente ignore esta mensagem. 🍽️",
     hsmTemplateName: "post_visit_thanks_v1",
     hsmLanguage: "pt_BR",
     isActive: true,

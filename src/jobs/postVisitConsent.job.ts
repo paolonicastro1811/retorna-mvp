@@ -54,7 +54,7 @@ export async function runPostVisitConsent(): Promise<{ sent: number; errors: num
 
       const result = await whatsappProvider.sendTemplate(
         customer.phone,
-        "post_visit_consent_v1",
+        "post_visit_thanks_v1",
         "pt_BR",
         [name],
         waCredentials
