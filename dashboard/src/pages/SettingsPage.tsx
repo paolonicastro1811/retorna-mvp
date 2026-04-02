@@ -219,6 +219,7 @@ export function SettingsPage() {
       })
       setRestaurant(updated)
       localStorage.setItem('restaurantPlan', newPlan)
+      sessionStorage.setItem('settingsTab', '5')
       window.location.reload()
     } catch (e) { console.error(e) }
     finally { setChangingPlan(false) }
@@ -317,7 +318,11 @@ export function SettingsPage() {
   const customPreview = customBody.replace(/\{\{customer_name\}\}/g, 'Maria')
 
   const isPlanB = restaurant?.plan === 'automatic'
-  const [activeTab, setActiveTab] = useState(1)
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = sessionStorage.getItem('settingsTab')
+    if (saved) { sessionStorage.removeItem('settingsTab'); return Number(saved) }
+    return 1
+  })
 
   const TABS = [
     { id: 1, label: 'Dados' },

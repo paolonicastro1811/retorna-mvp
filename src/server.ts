@@ -156,9 +156,9 @@ app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, attribut
 app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, reservationRouter);
 app.use("/restaurants", authMiddleware, tenantGuard, subscriptionGuard, liveStatsRouter);
 app.use("/billing", authMiddleware, billingRouter);
-app.use("/jobs", authMiddleware, jobRouter);
-app.use("/demo", authMiddleware, demoRouter);
-app.use("/whatsapp", authMiddleware, whatsappConnectRouter);
+app.use("/jobs", authMiddleware, subscriptionGuard, jobRouter);
+app.use("/demo", authMiddleware, subscriptionGuard, demoRouter);
+app.use("/whatsapp", authMiddleware, subscriptionGuard, whatsappConnectRouter);
 
 // --- Cron Jobs ---
 // Lifecycle refresh: a cada hora
