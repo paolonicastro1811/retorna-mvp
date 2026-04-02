@@ -53,7 +53,30 @@ router.post('/connect', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Nao foi possivel obter access token' });
     }
 
-    console.log(`[WhatsApp Connect] Got access token (length=${accessToken.length})`);
+    console.log(`[WhatsApp Connect] Got short-lived token (length=${accessToken.length})`);
+
+    // 1b. Exchange short-lived token for long-lived token (~60 days)
+    let tokenExpiresAt: Date | null = null;
+    try {
+      const longLivedUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&fb_exchange_token=${accessToken}`;
+      const longLivedRes = await fetch(longLivedUrl);
+      const longLivedData = await longLivedRes.json() as any;
+
+      if (longLivedData.access_token) {
+        accessToken = longLivedData.access_token;
+        // expires_in is in seconds (typically ~5184000 = 60 days)
+        const expiresInMs = (longLivedData.expires_in || 5184000) * 1000;
+        tokenExpiresAt = new Date(Date.now() + expiresInMs);
+        console.log(`[WhatsApp Connect] Exchanged for long-lived token, expires at ${tokenExpiresAt.toISOString()}`);
+      } else {
+        console.warn('[WhatsApp Connect] Could not get long-lived token, using short-lived:', longLivedData.error?.message);
+        // Short-lived tokens expire in ~1-2 hours
+        tokenExpiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      }
+    } catch (err) {
+      console.warn('[WhatsApp Connect] Long-lived token exchange failed:', err);
+      tokenExpiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    }
 
     // 2. Get waba_id and phone_number_id
     // Try from frontend first (postMessage), otherwise auto-discover via Graph API
@@ -153,6 +176,7 @@ router.post('/connect', async (req: Request, res: Response) => {
         wabaId: waba_id,
         waPhoneNumberId: phone_number_id,
         waAccessToken: accessToken,
+        waTokenExpiresAt: tokenExpiresAt,
         waPhoneNumber: displayPhone,
         waConnectedAt: new Date(),
       },
@@ -179,17 +203,23 @@ router.get('/status', async (req: Request, res: Response) => {
 
     const restaurant = await prisma.restaurant.findUnique({
       where: { id: user.restaurantId },
-      select: { waPhoneNumber: true, waConnectedAt: true, wabaId: true, waPhoneNumberId: true },
+      select: { waPhoneNumber: true, waConnectedAt: true, wabaId: true, waPhoneNumberId: true, waTokenExpiresAt: true },
     });
 
     if (!restaurant || !restaurant.wabaId) {
       return res.json({ connected: false });
     }
 
+    const tokenExpired = restaurant.waTokenExpiresAt
+      ? new Date() > restaurant.waTokenExpiresAt
+      : false;
+
     res.json({
       connected: true,
       phoneNumber: restaurant.waPhoneNumber,
       connectedAt: restaurant.waConnectedAt,
+      tokenExpired,
+      tokenExpiresAt: restaurant.waTokenExpiresAt,
     });
   } catch (err) {
     console.error('[WhatsApp Status] Error:', err);
@@ -209,6 +239,7 @@ router.post('/disconnect', async (req: Request, res: Response) => {
         wabaId: null,
         waPhoneNumberId: null,
         waAccessToken: null,
+        waTokenExpiresAt: null,
         waPhoneNumber: null,
         waConnectedAt: null,
       },

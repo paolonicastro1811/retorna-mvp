@@ -50,9 +50,9 @@ export function jwtAuth(req: Request, res: Response, next: NextFunction) {
  */
 export function signJwt(payload: JwtPayload): string {
   // Convert "30d" to seconds for jwt.sign
-  const expiresStr = process.env.JWT_EXPIRES_IN || "30d";
+  const expiresStr = process.env.JWT_EXPIRES_IN || "365d";
   const match = expiresStr.match(/^(\d+)([dhms])$/);
-  let expiresInSec = 30 * 24 * 60 * 60; // default 30 days
+  let expiresInSec = 365 * 24 * 60 * 60; // default 1 year
 
   if (match) {
     const num = parseInt(match[1], 10);

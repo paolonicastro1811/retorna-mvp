@@ -31,6 +31,7 @@ model Restaurant {
   roomLayout             Json?               @map("room_layout")
   avgMealDurationMinutes Int                 @default(90) @map("avg_meal_duration_minutes")
   waAccessToken          String?             @map("wa_access_token")
+  waTokenExpiresAt       DateTime?           @map("wa_token_expires_at")
   waConnectedAt          DateTime?           @map("wa_connected_at")
   waPhoneNumber          String?             @map("wa_phone_number")
   waPhoneNumberId        String?             @map("wa_phone_number_id")
