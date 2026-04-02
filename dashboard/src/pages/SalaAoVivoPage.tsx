@@ -48,7 +48,7 @@ export function SalaAoVivoPage() {
     )
   }
 
-  if (!stats) return <p className="text-sm text-gray-500">Erro ao carregar dados</p>
+  if (!stats) return <p className="text-base text-gray-500">Erro ao carregar dados</p>
 
   const occupancyPct = stats.tablesTotal > 0
     ? Math.round((stats.tablesOccupied / stats.tablesTotal) * 100)
@@ -59,13 +59,13 @@ export function SalaAoVivoPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-bold text-gray-900">Sala ao Vivo</h1>
+          <h1 className="text-xl font-bold text-gray-900">Sala ao Vivo</h1>
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#25D366] opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#25D366]" />
           </span>
         </div>
-        <span className="text-[10px] text-gray-400">
+        <span className="text-sm text-gray-400">
           Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
@@ -109,16 +109,16 @@ export function SalaAoVivoPage() {
 
       {/* Reservations timeline */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h2 className="text-sm font-bold text-gray-900 mb-3">
+        <h2 className="text-base font-bold text-gray-900 mb-3">
           Reservas de Hoje
-          <span className="ml-2 text-xs font-normal text-gray-500">
+          <span className="ml-2 text-sm font-normal text-gray-500">
             {stats.reservations.length} reserva(s)
           </span>
         </h2>
 
         {stats.reservations.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-xs text-gray-400">Nenhuma reserva para hoje</p>
+            <p className="text-sm text-gray-400">Nenhuma reserva para hoje</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -129,7 +129,7 @@ export function SalaAoVivoPage() {
               >
                 {/* Time */}
                 <div className="w-12 text-center">
-                  <span className="text-sm font-bold text-gray-900">{r.time}</span>
+                  <span className="text-base font-bold text-gray-900">{r.time}</span>
                 </div>
 
                 {/* Divider */}
@@ -137,15 +137,15 @@ export function SalaAoVivoPage() {
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-gray-900 truncate">
                     {r.customerName || 'Cliente'}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-gray-500">
+                    <span className="text-sm text-gray-500">
                       {r.guests}p
                     </span>
                     {r.table && (
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-sm text-gray-500">
                         Mesa {r.table.tableNumber}{r.table.label ? ` (${r.table.label})` : ''}
                       </span>
                     )}
@@ -153,7 +153,7 @@ export function SalaAoVivoPage() {
                 </div>
 
                 {/* Status badge */}
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[r.status] || 'bg-gray-100 text-gray-600'}`}>
+                <span className={`text-sm font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[r.status] || 'bg-gray-100 text-gray-600'}`}>
                   {STATUS_LABELS[r.status] || r.status}
                 </span>
               </div>
@@ -186,9 +186,9 @@ function StatCard({ label, value, sub, color, children }: {
     <div className={`bg-white border border-gray-200 border-l-4 ${borderColor} rounded-lg p-3`}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[10px] text-gray-500 mb-1">{label}</p>
-          <p className="text-lg font-bold text-gray-900">{value}</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
+          <p className="text-sm text-gray-500 mb-1">{label}</p>
+          <p className="text-xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm text-gray-400 mt-0.5">{sub}</p>
         </div>
         {children}
       </div>
@@ -213,7 +213,7 @@ function OccupancyRing({ pct }: { pct: number }) {
         transform="rotate(-90 20 20)"
         className="transition-all duration-700"
       />
-      <text x="20" y="20" textAnchor="middle" dy="0.35em" className="text-[9px] font-bold fill-gray-700">
+      <text x="20" y="20" textAnchor="middle" dy="0.35em" className="text-[11px] font-bold fill-gray-700">
         {pct}%
       </text>
     </svg>

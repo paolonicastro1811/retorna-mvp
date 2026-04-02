@@ -101,11 +101,11 @@ export function CustomersPage() {
     )
     .filter(c => filter === 'all' || c.lifecycleStatus === filter)
 
-  if (loading) return <div className="text-center py-20 text-gray-400 text-xs">Carregando...</div>
+  if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Carregando...</div>
 
   return (
     <div>
-      <h1 className="text-lg font-bold text-gray-900 mb-4">Clientes</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-4">Clientes</h1>
 
       <div className="flex gap-2 mb-4">
         <input
@@ -113,12 +113,12 @@ export function CustomersPage() {
           placeholder="Buscar por nome ou telefone..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#25D366]"
+          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366]"
         />
         <select
           value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#25D366]"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366]"
         >
           <option value="all">Todos</option>
           <option value="active">Ativos</option>
@@ -127,11 +127,11 @@ export function CustomersPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-xs">Nenhum cliente encontrado</div>
+        <div className="text-center py-16 text-gray-400 text-sm">Nenhum cliente encontrado</div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full text-xs">
-            <thead className="bg-gray-50 text-gray-500 text-[10px] uppercase">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
                 <th className="text-left px-4 py-2">Nome</th>
                 <th className="text-left px-4 py-2">Telefone</th>
@@ -167,7 +167,7 @@ export function CustomersPage() {
                         onKeyDown={e => handleEditKeyDown(e, c.id)}
                         onBlur={() => saveEdit(c.id)}
                         disabled={saving}
-                        className="w-20 text-right border border-[#25D366] rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#25D366]"
+                        className="w-20 text-right border border-[#25D366] rounded px-1.5 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#25D366]"
                         placeholder="0.00"
                       />
                     ) : (
@@ -188,7 +188,7 @@ export function CustomersPage() {
         </div>
       )}
 
-      <p className="text-[10px] text-gray-400 mt-3">{filtered.length} cliente(s)</p>
+      <p className="text-xs text-gray-400 mt-3">{filtered.length} cliente(s)</p>
 
       {/* Warning dialog — activate without ads consent */}
       {confirmCustomer && (
@@ -202,26 +202,26 @@ export function CustomersPage() {
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
               </div>
-              <h3 className="text-xs font-bold text-gray-900">Atencao — Risco de privacidade</h3>
+              <h3 className="text-sm font-bold text-gray-900">Atencao — Risco de privacidade</h3>
             </div>
 
-            <p className="text-[11px] text-gray-600 mb-1">
+            <p className="text-sm text-gray-600 mb-1">
               <strong>{confirmCustomer.name ?? confirmCustomer.phone}</strong> nao deu consentimento para receber campanhas de marketing (ads).
             </p>
-            <p className="text-[11px] text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 mb-4">
               Ativar este cliente sem consentimento pode violar a <strong>LGPD</strong> e prejudicar a reputacao do seu numero no <strong>WhatsApp Business</strong> (risco de bloqueio).
             </p>
 
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmCustomer(null)}
-                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-xs font-semibold hover:bg-gray-50"
+                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => doToggle(confirmCustomer, 'active')}
-                className="flex-1 bg-yellow-500 text-white py-2 rounded-lg text-xs font-semibold hover:bg-yellow-600"
+                className="flex-1 bg-yellow-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-yellow-600"
               >
                 Ativar mesmo assim
               </button>
