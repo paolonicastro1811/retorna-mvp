@@ -26,6 +26,27 @@ router.post("/", validate(createRestaurantSchema), async (req: Request, res: Res
   const { name, phone, timezone, plan, email, password, ownerName, billingCycle } = req.body;
   if (!name) return res.status(400).json({ error: "name is required" });
 
+  // Check for duplicate email
+  if (email) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    if (existingUser) {
+      return res.status(409).json({ error: "Este email já está cadastrado. Faça login para acessar seu painel.", code: "EMAIL_EXISTS" });
+    }
+  }
+
+  // Check for duplicate phone
+  if (phone) {
+    const normalizedPhone = phone.trim().startsWith('+') ? phone.trim() : `+55${phone.trim()}`;
+    const existingRestaurant = await prisma.restaurant.findFirst({
+      where: { phone: normalizedPhone },
+    });
+    if (existingRestaurant) {
+      return res.status(409).json({ error: "Este número de WhatsApp já está cadastrado. Faça login para acessar seu painel.", code: "PHONE_EXISTS" });
+    }
+  }
+
   const trialDays = plan === 'automatic' ? 15 : 30;
 
   const restaurant = await restaurantRepository.create({

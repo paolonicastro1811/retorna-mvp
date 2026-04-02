@@ -114,9 +114,14 @@ export function OnboardingPage() {
       }
 
       setDone(true)
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
-      setError('Erro ao ativar restaurante. Tente novamente.')
+      const msg = e?.message || ''
+      if (msg.includes('já está cadastrado') || msg.includes('já cadastrado')) {
+        setError(msg)
+      } else {
+        setError('Erro ao ativar restaurante. Tente novamente.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -409,6 +414,11 @@ export function OnboardingPage() {
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
                 {error}
+                {error.includes('já está cadastrado') && (
+                  <button onClick={() => navigate('/login')} className="block mt-2 text-[#25D366] font-semibold hover:underline">
+                    Ir para o login
+                  </button>
+                )}
               </div>
             )}
 
@@ -450,6 +460,11 @@ export function OnboardingPage() {
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
                 {error}
+                {error.includes('já está cadastrado') && (
+                  <button onClick={() => navigate('/login')} className="block mt-2 text-[#25D366] font-semibold hover:underline">
+                    Ir para o login
+                  </button>
+                )}
               </div>
             )}
 
