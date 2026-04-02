@@ -323,20 +323,52 @@ export function SettingsPage() {
   const customPreview = customBody.replace(/\{\{customer_name\}\}/g, 'Maria')
 
   const isPlanB = restaurant?.plan === 'automatic'
+  const [activeTab, setActiveTab] = useState(1)
+
+  const TABS = [
+    { id: 1, label: 'Dados' },
+    { id: 2, label: 'Mensagens' },
+    { id: 3, label: 'Horários', planB: true },
+    { id: 4, label: 'Mesas', planB: true },
+    { id: 5, label: 'Plano' },
+  ]
 
   if (loading) return <div className="text-center py-20 text-gray-400 text-base">Carregando...</div>
   if (!restaurant) return <div className="text-center py-20 text-red-500 text-base">Erro</div>
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Configurações</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-4">Configurações</h1>
 
-      {/* ── SECTION 1: Dados do Restaurante ── */}
-      <section className="mb-8">
-        <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
-          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">1</span>
-          Dados do Restaurante
-        </h2>
+      {/* Tab navigation */}
+      <div className="flex gap-1 mb-5 border-b border-gray-200 overflow-x-auto">
+        {TABS.map(tab => {
+          const disabled = tab.planB && !isPlanB
+          return (
+            <button
+              key={tab.id}
+              onClick={() => !disabled && setActiveTab(tab.id)}
+              disabled={disabled}
+              className={`px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-[#25D366] text-[#25D366]'
+                  : disabled
+                    ? 'border-transparent text-gray-300 cursor-not-allowed'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-xs font-bold mr-1.5 ${
+                activeTab === tab.id ? 'bg-[#25D366] text-white' : disabled ? 'bg-gray-200 text-gray-400' : 'bg-gray-200 text-gray-600'
+              }`}>{tab.id}</span>
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── TAB 1: Dados do Restaurante ── */}
+      {activeTab === 1 && (
+      <section>
         <div className="space-y-3 bg-gray-50 rounded-xl p-4">
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Nome do restaurante</label>
@@ -360,13 +392,11 @@ export function SettingsPage() {
           {saved && <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-sm">Salvo!</div>}
         </div>
       </section>
+      )}
 
-      {/* ── SECTION 2: Mensagens Automáticas ── */}
-      <section className="mb-8">
-        <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
-          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">2</span>
-          Mensagens Automáticas
-        </h2>
+      {/* ── TAB 2: Mensagens Automáticas ── */}
+      {activeTab === 2 && (
+      <section>
         <div className="bg-gray-50 rounded-xl p-4">
           <p className="text-sm text-gray-400 mb-3">Ative ou desative as mensagens que o sistema envia automaticamente via WhatsApp.</p>
           <div className="space-y-2">
@@ -582,14 +612,11 @@ export function SettingsPage() {
           </div>
         </div>
       </section>
+      )}
 
-      {/* ── SECTION 3: Hours (Plan B only) ── */}
-      {isPlanB && (
-        <section className="mb-8">
-          <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
-            <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">3</span>
-            Horarios
-          </h2>
+      {/* ── TAB 3: Horários (Plan B only) ── */}
+      {activeTab === 3 && isPlanB && (
+      <section>
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="space-y-1.5">
               {editHours.map((h, i) => (
@@ -632,28 +659,21 @@ export function SettingsPage() {
               className="w-full mt-3 bg-[#25D366] text-white py-2 rounded-lg font-semibold text-base hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
               {savingHours ? 'Salvando...' : 'Salvar horarios'}
             </button>
-            {savedHours && <div className="mt-2 bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-sm">Horarios salvos!</div>}
+            {savedHours && <div className="mt-2 bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-sm">Horários salvos!</div>}
           </div>
-        </section>
+      </section>
       )}
 
-      {/* ── SECTION 4: Table Layout (Plan B only) ── */}
-      {isPlanB && (
-        <section className="mb-8">
-          <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
-            <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">4</span>
-            Mesas e Layout
-          </h2>
+      {/* ── TAB 4: Mesas e Layout (Plan B only) ── */}
+      {activeTab === 4 && isPlanB && (
+      <section>
           <TableMapEditor />
-        </section>
+      </section>
       )}
 
-      {/* ── SECTION 5: Plano e Precos ── */}
-      <section className="mb-8">
-        <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
-          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">5</span>
-          Seu Plano
-        </h2>
+      {/* ── TAB 5: Plano e Preços ── */}
+      {activeTab === 5 && (
+      <section>
         <div className="grid grid-cols-2 gap-3">
           {PLANS.map(plan => {
             const isCurrentPlan = restaurant.plan === plan.key
@@ -716,9 +736,10 @@ export function SettingsPage() {
           })}
         </div>
       </section>
+      )}
 
       {/* Info */}
-      <div className="border-t border-gray-200 pt-4">
+      <div className="border-t border-gray-200 pt-4 mt-6">
         <p className="text-sm text-gray-400">Restaurant ID: {restaurant.id}</p>
       </div>
     </div>
