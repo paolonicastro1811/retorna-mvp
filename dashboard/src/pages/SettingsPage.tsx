@@ -20,6 +20,37 @@ interface MessageTemplate {
   body: string
   channel: string
   isActive: boolean
+  isCustom: boolean
+  metaStatus: string
+  metaRejectedReason?: string
+  aiReviewNotes?: string
+  hsmTemplateName?: string
+  createdAt: string
+}
+
+interface AiReview {
+  approved: boolean
+  score: number
+  issues: string[]
+  suggestions: string[]
+}
+
+interface CampaignLimits {
+  allowed: boolean
+  reason?: string
+  details?: {
+    customCampaignsThisMonth?: number
+    maxCustomCampaigns?: number
+  }
+}
+
+const CUSTOM_STATUS_BADGES: Record<string, { label: string; color: string }> = {
+  draft: { label: 'Rascunho', color: 'bg-gray-100 text-gray-700' },
+  ai_review: { label: 'Revisão AI', color: 'bg-blue-100 text-blue-700' },
+  ai_rejected: { label: 'Rejeitado (AI)', color: 'bg-red-100 text-red-700' },
+  submitted: { label: 'Em revisão Meta', color: 'bg-yellow-100 text-yellow-700' },
+  approved: { label: 'Aprovado', color: 'bg-green-100 text-green-700' },
+  rejected: { label: 'Rejeitado (Meta)', color: 'bg-red-100 text-red-700' },
 }
 
 const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -101,6 +132,16 @@ export function SettingsPage() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
   const [togglingTpl, setTogglingTpl] = useState<string | null>(null)
 
+  // Custom templates
+  const [customLimits, setCustomLimits] = useState<CampaignLimits | null>(null)
+  const [customName, setCustomName] = useState('')
+  const [customBody, setCustomBody] = useState('')
+  const [aiReview, setAiReview] = useState<AiReview | null>(null)
+  const [reviewing, setReviewing] = useState(false)
+  const [savingCustom, setSavingCustom] = useState(false)
+  const [submittingMeta, setSubmittingMeta] = useState<string | null>(null)
+  const [customError, setCustomError] = useState('')
+  const [customSuccess, setCustomSuccess] = useState('')
 
   // Plan change
   const [changingPlan, setChangingPlan] = useState(false)
@@ -110,7 +151,8 @@ export function SettingsPage() {
       api<Restaurant>(`/restaurants/${restaurantId}`),
       api<Hour[]>(`/restaurants/${restaurantId}/hours`),
       api<MessageTemplate[]>(`/restaurants/${restaurantId}/templates`),
-    ]).then(([r, h, tpls]) => {
+      api<CampaignLimits>(`/restaurants/${restaurantId}/campaign-limits`).catch(() => null),
+    ]).then(([r, h, tpls, lim]) => {
       setRestaurant(r)
       setName(r.name)
       setPhone(r.phone ?? '')
@@ -118,6 +160,7 @@ export function SettingsPage() {
       setMealDuration(r.avgMealDurationMinutes ?? 90)
       setHours(h)
       setTemplates(tpls)
+      if (lim) setCustomLimits(lim)
       const hourMap = new Map(h.map(hr => [hr.dayOfWeek, hr]))
       setEditHours(Array.from({ length: 7 }, (_, i) => {
         const hr = hourMap.get(i)
@@ -199,6 +242,86 @@ export function SettingsPage() {
     finally { setTogglingTpl(null) }
   }
 
+  // Custom template handlers
+  const reloadTemplates = async () => {
+    try {
+      const tpls = await api<MessageTemplate[]>(`/restaurants/${restaurantId}/templates`)
+      setTemplates(tpls)
+    } catch { /* ignore */ }
+  }
+
+  const handleAiReview = async () => {
+    if (!customBody.trim()) return
+    setReviewing(true)
+    setAiReview(null)
+    setCustomError('')
+    try {
+      const review = await api<AiReview>(`/restaurants/${restaurantId}/templates/ai-review`, {
+        method: 'POST',
+        body: JSON.stringify({ body: customBody }),
+      })
+      setAiReview(review)
+    } catch (err: any) {
+      setCustomError(err.message)
+    } finally {
+      setReviewing(false)
+    }
+  }
+
+  const handleCreateCustom = async () => {
+    if (!customName.trim() || !customBody.trim()) return
+    setSavingCustom(true)
+    setCustomError('')
+    setCustomSuccess('')
+    try {
+      await api(`/restaurants/${restaurantId}/templates/custom`, {
+        method: 'POST',
+        body: JSON.stringify({ name: customName, body: customBody }),
+      })
+      setCustomSuccess('Template criado! Agora envie para Meta para aprovação.')
+      setCustomName('')
+      setCustomBody('')
+      setAiReview(null)
+      reloadTemplates()
+    } catch (err: any) {
+      setCustomError(err.message || 'Erro ao criar template')
+    } finally {
+      setSavingCustom(false)
+    }
+  }
+
+  const handleSubmitToMeta = async (templateId: string) => {
+    setSubmittingMeta(templateId)
+    setCustomError('')
+    try {
+      await api(`/restaurants/${restaurantId}/templates/${templateId}/submit-to-meta`, {
+        method: 'POST',
+      })
+      setCustomSuccess('Template enviado para revisão da Meta!')
+      reloadTemplates()
+    } catch (err: any) {
+      setCustomError(err.message)
+    } finally {
+      setSubmittingMeta(null)
+    }
+  }
+
+  const handleDeleteCustom = async (templateId: string) => {
+    if (!confirm('Tem certeza? Esta ação não pode ser desfeita.')) return
+    try {
+      await api(`/restaurants/${restaurantId}/templates/${templateId}`, {
+        method: 'DELETE',
+      })
+      reloadTemplates()
+    } catch (err: any) {
+      setCustomError(err.message)
+    }
+  }
+
+  const systemTemplates = templates.filter(t => !t.isCustom)
+  const customTemplates = templates.filter(t => t.isCustom)
+  const customPreview = customBody.replace(/\{\{customer_name\}\}/g, 'Maria')
+
   const isPlanB = restaurant?.plan === 'automatic'
 
   if (loading) return <div className="text-center py-20 text-gray-400 text-base">Carregando...</div>
@@ -238,16 +361,16 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* ── SECTION 2: Mensagens Automaticas ── */}
+      {/* ── SECTION 2: Mensagens Automáticas ── */}
       <section className="mb-8">
         <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
           <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">2</span>
-          Mensagens Automaticas
+          Mensagens Automáticas
         </h2>
         <div className="bg-gray-50 rounded-xl p-4">
           <p className="text-sm text-gray-400 mb-3">Ative ou desative as mensagens que o sistema envia automaticamente via WhatsApp.</p>
           <div className="space-y-2">
-            {[...templates].sort((a, b) => (TEMPLATE_ORDER[a.name]?.order ?? 99) - (TEMPLATE_ORDER[b.name]?.order ?? 99)).map(tpl => {
+            {[...systemTemplates].sort((a, b) => (TEMPLATE_ORDER[a.name]?.order ?? 99) - (TEMPLATE_ORDER[b.name]?.order ?? 99)).map(tpl => {
               const meta = TEMPLATE_ORDER[tpl.name]
               return (
               <div key={tpl.id} className={`border rounded-lg p-2 transition-all ${tpl.isActive ? 'border-[#25D366] bg-white' : 'border-gray-200 bg-gray-100/50'}`}>
@@ -286,6 +409,176 @@ export function SettingsPage() {
               </div>
               )
             })}
+          </div>
+
+          {/* ── Custom Templates ── */}
+          <div className="mt-5 pt-4 border-t border-gray-200">
+            <h3 className="text-sm font-bold text-gray-800 mb-2">Templates Personalizados</h3>
+            <p className="text-xs text-gray-400 mb-3">Crie mensagens personalizadas para campanhas. Cada template passa por revisão de AI e aprovação da Meta.</p>
+
+            {/* Campaign limits */}
+            {customLimits && (
+              <div className={`rounded-lg p-2 text-xs mb-3 ${customLimits.allowed ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                {customLimits.allowed ? (
+                  <p>Campanhas custom este mês: <strong>{customLimits.details?.customCampaignsThisMonth || 0}/{customLimits.details?.maxCustomCampaigns || 2}</strong></p>
+                ) : (
+                  <p>{customLimits.reason}</p>
+                )}
+              </div>
+            )}
+
+            {/* Error/Success */}
+            {customError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs mb-3">
+                {customError}
+                <button onClick={() => setCustomError('')} className="float-right font-bold">x</button>
+              </div>
+            )}
+            {customSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-xs mb-3">
+                {customSuccess}
+                <button onClick={() => setCustomSuccess('')} className="float-right font-bold">x</button>
+              </div>
+            )}
+
+            {/* Create form */}
+            <div className="space-y-2 mb-4">
+              <input
+                type="text"
+                value={customName}
+                onChange={e => setCustomName(e.target.value)}
+                placeholder="Nome do template (ex: Promoção de verão)"
+                className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent"
+              />
+              <textarea
+                value={customBody}
+                onChange={e => setCustomBody(e.target.value)}
+                placeholder="Oi {{customer_name}}! Temos uma novidade especial para você..."
+                rows={3}
+                className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent"
+              />
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>{customBody.length}/1024 caracteres</span>
+                <span className="text-gray-400">Use {'{{customer_name}}'} para personalizar</span>
+              </div>
+
+              {/* Preview */}
+              {customBody && (
+                <div className="bg-[#e5ddd5] rounded-lg p-2">
+                  <p className="text-xs text-gray-500 mb-1">Anteprima WhatsApp:</p>
+                  <div className="bg-white rounded-lg px-2 py-1.5 text-xs max-w-[85%] shadow-sm whitespace-pre-wrap">
+                    {customPreview}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Review result */}
+              {aiReview && (
+                <div className={`rounded-lg p-3 text-xs ${aiReview.approved ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold">{aiReview.approved ? 'Aprovado pela AI' : 'Reprovado pela AI'}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${aiReview.score >= 70 ? 'bg-green-200 text-green-800' : aiReview.score >= 40 ? 'bg-yellow-200 text-yellow-800' : 'bg-red-200 text-red-800'}`}>
+                      Score: {aiReview.score}/100
+                    </span>
+                  </div>
+                  {aiReview.issues.length > 0 && (
+                    <div className="mb-1">
+                      <p className="font-semibold text-red-700 mb-0.5">Problemas:</p>
+                      <ul className="list-disc list-inside text-red-600 space-y-0.5">
+                        {aiReview.issues.map((issue, i) => <li key={i}>{issue}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {aiReview.suggestions.length > 0 && (
+                    <div>
+                      <p className="font-semibold text-blue-700 mb-0.5">Sugestões:</p>
+                      <ul className="list-disc list-inside text-blue-600 space-y-0.5">
+                        {aiReview.suggestions.map((sug, i) => <li key={i}>{sug}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAiReview}
+                  disabled={!customBody.trim() || reviewing}
+                  className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {reviewing ? 'Analisando...' : 'Revisar com AI'}
+                </button>
+                <button
+                  onClick={handleCreateCustom}
+                  disabled={!customName.trim() || !customBody.trim() || savingCustom || (aiReview !== null && !aiReview.approved)}
+                  className="px-3 py-1.5 text-xs bg-[#25D366] text-white rounded-lg hover:bg-[#1DA851] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingCustom ? 'Salvando...' : 'Criar Template'}
+                </button>
+              </div>
+            </div>
+
+            {/* Existing custom templates */}
+            {customTemplates.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-600">Seus templates ({customTemplates.length}/3)</p>
+                {customTemplates.map(t => {
+                  const statusBadge = CUSTOM_STATUS_BADGES[t.metaStatus] || CUSTOM_STATUS_BADGES.draft
+                  return (
+                    <div key={t.id} className="border border-gray-200 rounded-lg p-2 space-y-1.5 bg-white">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-gray-800">{t.name}</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${statusBadge.color}`}>
+                            {statusBadge.label}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteCustom(t.id)}
+                          className="text-xs text-red-500 hover:text-red-700"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                      <div className="bg-gray-50 rounded p-2 text-xs text-gray-700 whitespace-pre-wrap">
+                        {t.body}
+                      </div>
+                      {t.metaRejectedReason && (
+                        <div className="bg-red-50 rounded p-2 text-xs text-red-700">
+                          <strong>Motivo da rejeição:</strong> {t.metaRejectedReason}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        {t.metaStatus === 'draft' && (
+                          <button
+                            onClick={() => handleSubmitToMeta(t.id)}
+                            disabled={submittingMeta === t.id}
+                            className="px-2 py-1 text-xs bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50"
+                          >
+                            {submittingMeta === t.id ? 'Enviando...' : 'Enviar para Meta'}
+                          </button>
+                        )}
+                        {t.metaStatus === 'submitted' && (
+                          <span className="text-xs text-yellow-600">Aguardando aprovação da Meta (até 24h)...</span>
+                        )}
+                        {t.metaStatus === 'approved' && (
+                          <span className="text-xs text-green-600">Pronto para usar em campanhas!</span>
+                        )}
+                        {t.metaStatus === 'rejected' && (
+                          <button
+                            onClick={() => handleDeleteCustom(t.id)}
+                            className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                          >
+                            Excluir e recriar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       </section>
