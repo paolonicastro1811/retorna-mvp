@@ -43,8 +43,8 @@ model Restaurant {
   subscriptionStatus     String              @default("trialing") @map("subscription_status")
   trialDays              Int                 @default(30) @map("trial_days")
   trialStartDate         DateTime?           @map("trial_start_date")
-  maxCustomCampaignsMonth Int                @default(2) @map("max_custom_campaigns_month")
-  maxMsgsPerCustomerMonth Int                @default(4) @map("max_msgs_per_customer_month")
+  maxCustomCampaignsMonth Int                @default(3) @map("max_custom_campaigns_month")
+  maxMsgsPerCustomerMonth Int                @default(5) @map("max_msgs_per_customer_month")
   minCampaignIntervalDays Int                @default(7) @map("min_campaign_interval_days")
   automationLogs         AutomationLog[]
   campaigns              Campaign[]

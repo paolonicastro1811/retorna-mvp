@@ -49,6 +49,13 @@ router.patch("/:restaurantId/templates/:templateId", async (req: Request, res: R
     const { isActive } = req.body;
     if (typeof isActive !== "boolean")
       return res.status(400).json({ error: "isActive (boolean) is required" });
+
+    // post_visit_thanks is mandatory for Meta compliance — cannot be disabled
+    const template = await prisma.messageTemplate.findUnique({ where: { id: param(req, "templateId") } });
+    if (template?.hsmTemplateName === "post_visit_thanks_v1" && !isActive) {
+      return res.status(403).json({ error: "Template de consentimento é obrigatório e não pode ser desativado." });
+    }
+
     const updated = await messageTemplateRepository.update(
       param(req, "templateId"),
       { isActive }

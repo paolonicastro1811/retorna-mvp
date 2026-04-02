@@ -259,6 +259,51 @@ function getBenefitsForTier(tier: Tier, discount: number): string {
   }
 }
 
+// Visit-triggered templates bypass monthly cap (customer initiated the action)
+const VISIT_TRIGGERED_TEMPLATES = new Set([
+  "milestone_halfway",
+  "reward_earned",
+  "surprise_discount",
+  "loyalty_vip",
+  "post_visit_thanks",
+]);
+
+async function isUnderMonthlyCap(
+  restaurantId: string,
+  customerId: string,
+  templateKey: string
+): Promise<boolean> {
+  // Visit-triggered messages always allowed (customer initiated)
+  if (VISIT_TRIGGERED_TEMPLATES.has(templateKey)) return true;
+
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { maxMsgsPerCustomerMonth: true },
+  });
+  const maxPerMonth = restaurant?.maxMsgsPerCustomerMonth ?? 5;
+
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const sentThisMonth = await prisma.automationLog.count({
+    where: {
+      customerId,
+      restaurantId,
+      status: "sent",
+      createdAt: { gte: monthStart },
+    },
+  });
+
+  if (sentThisMonth >= maxPerMonth) {
+    console.log(
+      `[Loyalty] Monthly cap reached: customer=${customerId} sent=${sentThisMonth}/${maxPerMonth} template=${templateKey} — skipping`
+    );
+    return false;
+  }
+  return true;
+}
+
 async function sendAndLog(
   restaurantId: string,
   customerId: string,
@@ -268,6 +313,11 @@ async function sendAndLog(
   metadata: Record<string, unknown>,
   credentials?: WhatsAppCredentials
 ): Promise<boolean> {
+  // Check monthly cap (visit-triggered messages bypass this)
+  if (!(await isUnderMonthlyCap(restaurantId, customerId, templateKey))) {
+    return false;
+  }
+
   try {
     const result = await whatsappProvider.sendTemplate(
       phone,

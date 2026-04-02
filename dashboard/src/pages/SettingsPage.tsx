@@ -397,20 +397,31 @@ export function SettingsPage() {
       {activeTab === 2 && (
       <section>
         <div className="bg-gray-50 rounded-xl p-4">
-          <p className="text-sm text-gray-400 mb-3">Ative ou desative as mensagens que o sistema envia automaticamente via WhatsApp.</p>
+          <p className="text-sm text-gray-400 mb-2">Ative ou desative as mensagens automáticas. Máximo 5 mensagens por cliente/mês.</p>
+          <p className="text-xs text-gray-400 mb-3">Mensagens disparadas por visita (milestone, recompensa, surpresa, VIP) não contam no limite quando o cliente visita com frequência.</p>
           <div className="space-y-2">
             {[...systemTemplates].sort((a, b) => (TEMPLATE_ORDER[a.name]?.order ?? 99) - (TEMPLATE_ORDER[b.name]?.order ?? 99)).map(tpl => {
               const meta = TEMPLATE_ORDER[tpl.name]
+              const isConsent = tpl.name === 'Pós-visita + Consentimento'
               return (
               <div key={tpl.id} className={`border rounded-lg p-2 transition-all ${tpl.isActive ? 'border-[#25D366] bg-white' : 'border-gray-200 bg-gray-100/50'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <span className={`text-sm font-semibold ${tpl.isActive ? 'text-gray-900' : 'text-gray-400'}`}>{tpl.name}</span>
-                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${tpl.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
-                      {tpl.isActive ? 'Ativo' : 'Inativo'}
-                    </span>
-                    {meta && <p className="text-xs text-gray-400 mt-0.5">{meta.desc}</p>}
+                    {isConsent ? (
+                      <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">Obrigatório (Meta)</span>
+                    ) : (
+                      <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${tpl.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                        {tpl.isActive ? 'Ativo' : 'Inativo'}
+                      </span>
+                    )}
+                    {meta && <p className="text-xs text-gray-400 mt-0.5">{meta.desc}{isConsent ? ' — necessário para conformidade Meta' : ''}</p>}
                   </div>
+                  {isConsent ? (
+                    <div className="relative w-10 h-5 rounded-full bg-[#25D366] opacity-60 cursor-not-allowed">
+                      <span className="absolute top-0.5 left-[22px] w-4 h-4 bg-white rounded-full shadow" />
+                    </div>
+                  ) : (
                   <button
                     onClick={() => handleToggleTemplate(tpl.id, tpl.isActive)}
                     disabled={togglingTpl === tpl.id}
@@ -418,6 +429,7 @@ export function SettingsPage() {
                   >
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${tpl.isActive ? 'left-[22px]' : 'left-0.5'}`} />
                   </button>
+                  )}
                 </div>
                 {tpl.isActive && (
                   <div className="mt-1.5 bg-[#DCF8C6] rounded-lg rounded-tl-none p-2 text-xs text-gray-800 leading-relaxed whitespace-pre-wrap max-w-[85%]">
