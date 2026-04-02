@@ -202,14 +202,14 @@ export function CustomersPage() {
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
               </div>
-              <h3 className="text-base font-bold text-gray-900">Atencao — Risco de privacidade</h3>
+              <h3 className="text-base font-bold text-gray-900">Atenção — Risco de privacidade</h3>
             </div>
 
             <p className="text-base text-gray-600 mb-1">
-              <strong>{confirmCustomer.name ?? confirmCustomer.phone}</strong> nao deu consentimento para receber campanhas de marketing (ads).
+              <strong>{confirmCustomer.name ?? confirmCustomer.phone}</strong> não deu consentimento para receber campanhas de marketing (ads).
             </p>
             <p className="text-base text-gray-600 mb-4">
-              Ativar este cliente sem consentimento pode violar a <strong>LGPD</strong> e prejudicar a reputacao do seu numero no <strong>WhatsApp Business</strong> (risco de bloqueio).
+              Ativar este cliente sem consentimento pode violar a <strong>LGPD</strong> e prejudicar a reputação do seu número no <strong>WhatsApp Business</strong> (risco de bloqueio).
             </p>
 
             <div className="flex gap-2">

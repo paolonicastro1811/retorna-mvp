@@ -76,7 +76,7 @@ export function SalaAoVivoPage() {
         <StatCard
           label="Mesas Ocupadas"
           value={`${stats.tablesOccupied} / ${stats.tablesTotal}`}
-          sub={`${occupancyPct}% ocupacao`}
+          sub={`${occupancyPct}% ocupação`}
           color={occupancyPct > 80 ? 'red' : occupancyPct > 50 ? 'amber' : 'green'}
         >
           <OccupancyRing pct={occupancyPct} />

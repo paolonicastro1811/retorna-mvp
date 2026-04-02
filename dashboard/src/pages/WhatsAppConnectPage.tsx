@@ -79,7 +79,7 @@ export default function WhatsAppConnectPage() {
       script.defer = true
       script.crossOrigin = 'anonymous'
       script.onerror = () => {
-        setError('Nao foi possivel carregar o Facebook SDK. Desative o bloqueador de anuncios e recarregue a pagina.')
+        setError('Não foi possível carregar o Facebook SDK. Desative o bloqueador de anúncios e recarregue a página.')
       }
       document.body.appendChild(script)
     }
@@ -87,7 +87,7 @@ export default function WhatsAppConnectPage() {
 
   const handleConnect = () => {
     if (!fbReady || !window.FB) {
-      setError('Facebook SDK nao carregado. Desative o bloqueador de anuncios e recarregue a pagina.')
+      setError('Facebook SDK não carregado. Desative o bloqueador de anúncios e recarregue a página.')
       return
     }
 
@@ -147,7 +147,7 @@ export default function WhatsAppConnectPage() {
           }, 1000)
         } else {
           console.warn('[WA Connect] No authResponse — user cancelled or error')
-          setError('Autorizacao cancelada pelo usuario.')
+          setError('Autorização cancelada pelo usuário.')
           setConnecting(false)
         }
       },
@@ -260,7 +260,7 @@ export default function WhatsAppConnectPage() {
         </h1>
         <p className="text-gray-500 text-sm mb-8">
           Conecte sua conta WhatsApp Business para enviar campanhas de
-          reativacao automaticamente.
+          reativação automaticamente.
         </p>
 
         {/* Steps */}

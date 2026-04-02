@@ -36,11 +36,11 @@ interface AutomationStats {
 
 // Only the 6 templates that exist on Meta
 const TEMPLATE_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  post_visit_thanks: { label: 'Pos-visita + Consentimento', emoji: '📩', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  post_visit_thanks: { label: 'Pós-visita + Consentimento', emoji: '📩', color: 'bg-blue-50 text-blue-700 border-blue-200' },
   reward_earned: { label: 'Recompensa 10 visitas', emoji: '🎁', color: 'bg-pink-50 text-pink-700 border-pink-200' },
   surprise_discount: { label: 'Desconto surpresa', emoji: '🎉', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
   milestone_halfway: { label: 'Metade do caminho', emoji: '🔥', color: 'bg-orange-50 text-orange-700 border-orange-200' },
-  reactivation: { label: 'Reativacao', emoji: '💚', color: 'bg-green-50 text-green-700 border-green-200' },
+  reactivation: { label: 'Reativação', emoji: '💚', color: 'bg-green-50 text-green-700 border-green-200' },
   loyalty_vip: { label: 'Cliente VIP 20%', emoji: '🏆', color: 'bg-amber-50 text-amber-700 border-amber-200' },
 }
 
@@ -90,7 +90,7 @@ export function AutomacoesPage() {
     <div>
       {/* Header */}
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Automacoes</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Automações</h1>
         <p className="text-sm text-gray-400">Mensagens enviadas automaticamente pelo programa de fidelidade</p>
       </div>
 
@@ -111,7 +111,7 @@ export function AutomacoesPage() {
 
       {/* Tier Distribution */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5">
-        <h2 className="text-base font-bold text-gray-800 mb-3">Distribuicao por nivel</h2>
+        <h2 className="text-base font-bold text-gray-800 mb-3">Distribuição por nível</h2>
         <div className="flex gap-2">
           {['novo', 'frequente', 'prata', 'ouro'].map(tier => {
             const cfg = TIER_CONFIG[tier]
@@ -160,7 +160,7 @@ export function AutomacoesPage() {
           {totalSent === 0 && totalFailed === 0 && (
             <div className="text-center py-8">
               <p className="text-3xl mb-2">📭</p>
-              <p className="text-base text-gray-500">Nenhuma mensagem automatica enviada ainda</p>
+              <p className="text-base text-gray-500">Nenhuma mensagem automática enviada ainda</p>
               <p className="text-sm text-gray-400 mt-1">Registre visitas e as mensagens serao disparadas automaticamente</p>
             </div>
           )}

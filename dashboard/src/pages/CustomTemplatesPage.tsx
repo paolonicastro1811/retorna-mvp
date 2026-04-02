@@ -33,7 +33,7 @@ interface CampaignLimits {
 
 const STATUS_BADGES: Record<string, { label: string; color: string }> = {
   draft: { label: 'Rascunho', color: 'bg-gray-100 text-gray-700' },
-  ai_review: { label: 'Revisao AI', color: 'bg-blue-100 text-blue-700' },
+  ai_review: { label: 'Revisão AI', color: 'bg-blue-100 text-blue-700' },
   ai_rejected: { label: 'Rejeitado (AI)', color: 'bg-red-100 text-red-700' },
   submitted: { label: 'Em revisao Meta', color: 'bg-yellow-100 text-yellow-700' },
   approved: { label: 'Aprovado', color: 'bg-green-100 text-green-700' },
@@ -135,7 +135,7 @@ export function CustomTemplatesPage() {
   }
 
   async function handleDelete(templateId: string) {
-    if (!confirm('Tem certeza? Esta acao nao pode ser desfeita.')) return
+    if (!confirm('Tem certeza? Esta ação não pode ser desfeita.')) return
     try {
       await api(`/restaurants/${restaurantId}/templates/${templateId}`, {
         method: 'DELETE',
@@ -245,7 +245,7 @@ export function CustomTemplatesPage() {
             )}
             {aiReview.suggestions.length > 0 && (
               <div>
-                <p className="text-base font-semibold text-blue-700 mb-1">Sugestoes:</p>
+                <p className="text-base font-semibold text-blue-700 mb-1">Sugestões:</p>
                 <ul className="list-disc list-inside text-base text-blue-600 space-y-0.5">
                   {aiReview.suggestions.map((sug, i) => <li key={i}>{sug}</li>)}
                 </ul>
@@ -306,7 +306,7 @@ export function CustomTemplatesPage() {
 
               {t.metaRejectedReason && (
                 <div className="bg-red-50 rounded-lg p-3 text-base text-red-700">
-                  <strong>Motivo da rejeicao:</strong> {t.metaRejectedReason}
+                  <strong>Motivo da rejeição:</strong> {t.metaRejectedReason}
                 </div>
               )}
 

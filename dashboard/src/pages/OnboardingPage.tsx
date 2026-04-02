@@ -167,7 +167,7 @@ export function OnboardingPage() {
           ))}
         </div>
 
-        {/* Passo 1 — Informacoes basicas */}
+        {/* Passo 1 — Informações básicas */}
         {step === 1 && (
           <div className="space-y-5">
             <div>
@@ -226,7 +226,7 @@ export function OnboardingPage() {
           <div className="space-y-6">
             <p className="text-lg font-bold text-[#2d2d3a] text-center">Escolha seu plano</p>
 
-            {/* Toggle mensile/annuale */}
+            {/* Toggle mensal/anual */}
             <div className="flex items-center justify-center gap-3">
               <span className={`text-sm font-medium ${billing === 'monthly' ? 'text-[#1a1a2e]' : 'text-gray-400'}`}>Mensal</span>
               <button

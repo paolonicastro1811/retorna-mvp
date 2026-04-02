@@ -28,7 +28,7 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string; dot:
   no_show:   { label: 'Nao compareceu', bg: 'bg-red-50', text: 'text-red-500', dot: 'bg-red-300' },
 }
 
-const DAY_NAMES_PT = ['Domingo', 'Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado']
+const DAY_NAMES_PT = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 function toDateStr(d: Date) {
@@ -213,7 +213,7 @@ export function BookingLeadsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-xl p-5 shadow-xl max-w-xs">
             <p className="text-base font-semibold text-gray-900 mb-1">Excluir reserva?</p>
-            <p className="text-base text-gray-500 mb-4">Essa acao nao pode ser desfeita.</p>
+            <p className="text-base text-gray-500 mb-4">Essa ação não pode ser desfeita.</p>
             <div className="flex gap-2">
               <button onClick={() => handleDelete(deleteConfirm)} disabled={actionLoading}
                 className="flex-1 bg-red-500 text-white py-1.5 rounded-lg text-base font-semibold hover:bg-red-600 disabled:opacity-50">
@@ -286,7 +286,7 @@ export function BookingLeadsPage() {
           <div className="text-center py-16">
             <div className="text-3xl mb-2">🪑</div>
             <p className="text-lg text-gray-400 font-medium">Nenhuma mesa configurada</p>
-            <p className="text-base text-gray-300 mt-1">Va em Configuracoes para criar as mesas do restaurante</p>
+            <p className="text-base text-gray-300 mt-1">Vá em Configurações para criar as mesas do restaurante</p>
           </div>
         ) : (
           <div className="flex gap-4">

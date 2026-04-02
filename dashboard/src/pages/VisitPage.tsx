@@ -119,7 +119,7 @@ export function VisitPage() {
             <div className="space-y-2 mt-3 pt-3 border-t border-green-200">
               {/* Tier + visits */}
               <div className="flex items-center justify-between">
-                <span className="text-base text-green-800">Nivel atual</span>
+                <span className="text-base text-green-800">Nível atual</span>
                 <span className={`text-base font-semibold px-2 py-0.5 rounded-full ${TIER_COLOR[lf.tier] || TIER_COLOR.novo}`}>
                   {TIER_EMOJI[lf.tier] || ''} {TIER_LABEL[lf.tier] || lf.tier}
                 </span>
@@ -146,13 +146,13 @@ export function VisitPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-green-700 font-semibold">🥇 Nivel maximo atingido!</p>
+                <p className="text-sm text-green-700 font-semibold">🥇 Nível máximo atingido!</p>
               )}
 
               {/* Streak */}
               {lf.streakTarget > 0 && (
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-base text-green-800">Sequencia semanal</span>
+                  <span className="text-base text-green-800">Sequência semanal</span>
                   <span className="text-base font-bold text-green-900">
                     🔥 {lf.currentStreak}/{lf.streakTarget}
                   </span>
@@ -294,7 +294,7 @@ function AutomationCTA() {
           <h3 className="text-base font-bold text-white">Quer automatizar?</h3>
         </div>
         <p className="text-sm text-gray-400 mb-3">
-          Cada restaurante tem seu proprio sistema. Podemos configurar a integracao automatica com o seu POS, maquininha ou sistema de pedidos.
+          Cada restaurante tem seu próprio sistema. Podemos configurar a integração automática com o seu POS, maquininha ou sistema de pedidos.
         </p>
         <a
           href="https://wa.me/5511999999999?text=Oi!%20Quero%20saber%20mais%20sobre%20a%20automacao%20de%20registro%20de%20visitas"

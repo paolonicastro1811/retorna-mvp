@@ -22,16 +22,16 @@ interface MessageTemplate {
   isActive: boolean
 }
 
-const DAY_NAMES = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado']
+const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
 // Template display order (chronological: first received → last) and short descriptions
 const TEMPLATE_ORDER: Record<string, { order: number; desc: string; previewVisits: string }> = {
-  'Pos-visita + Consentimento': { order: 1, desc: '24h apos visita, pede opt-in', previewVisits: '1' },
+  'Pós-visita + Consentimento': { order: 1, desc: '24h após visita, pede opt-in', previewVisits: '1' },
   'Metade do caminho': { order: 2, desc: 'Ao completar 5 visitas', previewVisits: '5' },
   'Recompensa 10 visitas': { order: 3, desc: '10% desconto ao completar 10 visitas', previewVisits: '10' },
-  'Desconto surpresa': { order: 4, desc: 'Desconto aleatorio para fieis', previewVisits: '8' },
-  'Cliente VIP — 20% desconto': { order: 5, desc: 'A cada 20 visitas (20, 40, 60...): 20% desconto', previewVisits: '20' },
-  'Reativacao': { order: 6, desc: 'Com opt-in, sem visita ha 30+ dias', previewVisits: '12' },
+  'Desconto surpresa': { order: 4, desc: 'Desconto aleatório para fiéis', previewVisits: '8' },
+  'Cliente VIP — 20% desconto': { order: 5, desc: 'A cada 20 visitas (20, 40, 60…): 20% desconto', previewVisits: '20' },
+  'Reativação': { order: 6, desc: 'Com opt-in, sem visita há 30+ dias', previewVisits: '12' },
 }
 
 const PLANS = [
@@ -206,7 +206,7 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-xl font-bold text-gray-900 mb-5">Configuracoes</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-5">Configurações</h1>
 
       {/* ── SECTION 1: Dados do Restaurante ── */}
       <section className="mb-8">
@@ -325,7 +325,7 @@ export function SettingsPage() {
             </div>
             {/* Meal duration — auto-complete reservations */}
             <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-3">
-              <span className="text-sm text-gray-600 whitespace-nowrap">Duracao media da refeicao:</span>
+              <span className="text-sm text-gray-600 whitespace-nowrap">Duração média da refeição:</span>
               <div className="flex items-center gap-1">
                 <input type="number" min={30} max={240} step={15} value={mealDuration}
                   onChange={e => setMealDuration(Math.max(30, Math.min(240, parseInt(e.target.value) || 90)))}

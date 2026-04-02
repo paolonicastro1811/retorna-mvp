@@ -14,7 +14,7 @@ export function VerifyPage() {
     const token = searchParams.get('token')
     if (!token) {
       setStatus('error')
-      setErrorMsg('Link invalido — token ausente.')
+      setErrorMsg('Link inválido — token ausente.')
       return
     }
 
@@ -44,7 +44,7 @@ export function VerifyPage() {
         } else if (message.includes('utilizado')) {
           setErrorMsg('Este link ja foi utilizado. Solicite um novo.')
         } else {
-          setErrorMsg('Link invalido ou expirado.')
+          setErrorMsg('Link inválido ou expirado.')
         }
       }
     }
