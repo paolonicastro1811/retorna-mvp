@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { WhatsAppIcon } from '../components/icons'
 
@@ -14,6 +15,7 @@ interface SignupData {
 }
 
 export default function WhatsAppConnectPage() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState<WhatsAppStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
@@ -134,6 +136,8 @@ export default function WhatsAppConnectPage() {
                   connectedAt: result.connectedAt,
                 })
                 window.dispatchEvent(new Event('whatsapp-status-changed'))
+                // Redirect to dashboard after connection
+                setTimeout(() => navigate('/painel'), 1500)
               })
               .catch((err) => {
                 console.error('[WA Connect] Error:', err)
