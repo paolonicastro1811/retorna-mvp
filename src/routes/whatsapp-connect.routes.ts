@@ -40,28 +40,77 @@ router.post('/connect', async (req: Request, res: Response) => {
 
     const accessToken = tokenData.access_token;
 
-    // 2. Get shared WABA ID from the debug token
-    const debugRes = await fetch(
-      `https://graph.facebook.com/v21.0/debug_token?input_token=${accessToken}`,
-      { headers: { Authorization: `Bearer ${FB_APP_ID}|${FB_APP_SECRET}` } }
-    );
-    const debugData = await debugRes.json() as any;
-    console.log('[WhatsApp Connect] Debug token data:', JSON.stringify(debugData, null, 2));
-
-    // 3. Frontend sends waba_id and phone_number_id from the Embedded Signup callback
-    const { waba_id, phone_number_id } = req.body;
+    // 2. Get waba_id and phone_number_id
+    // Try from frontend first (postMessage), otherwise auto-discover via Graph API
+    let waba_id = req.body.waba_id || '';
+    let phone_number_id = req.body.phone_number_id || '';
 
     if (!waba_id || !phone_number_id) {
-      return res.status(400).json({ error: 'WABA ID e Phone Number ID necessarios' });
+      console.log('[WhatsApp Connect] No waba_id/phone_number_id from frontend, auto-discovering...');
+
+      // Get shared WABAs from the debug token
+      const debugRes = await fetch(
+        `https://graph.facebook.com/v21.0/debug_token?input_token=${accessToken}`,
+        { headers: { Authorization: `Bearer ${FB_APP_ID}|${FB_APP_SECRET}` } }
+      );
+      const debugData = await debugRes.json() as any;
+      console.log('[WhatsApp Connect] Debug token:', JSON.stringify(debugData, null, 2));
+
+      // Extract shared WABA from granular_scopes
+      const scopes = debugData?.data?.granular_scopes || [];
+      for (const scope of scopes) {
+        if (scope.scope === 'whatsapp_business_management' && scope.target_ids?.length > 0) {
+          waba_id = scope.target_ids[0];
+          break;
+        }
+      }
+
+      // If still no WABA, try listing shared WABAs
+      if (!waba_id) {
+        const bizRes = await fetch(
+          `https://graph.facebook.com/v21.0/me/businesses?fields=id,name`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const bizData = await bizRes.json() as any;
+        console.log('[WhatsApp Connect] Businesses:', JSON.stringify(bizData, null, 2));
+
+        if (bizData.data?.[0]?.id) {
+          const wabaRes = await fetch(
+            `https://graph.facebook.com/v21.0/${bizData.data[0].id}/owned_whatsapp_business_accounts?fields=id,name`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          const wabaData = await wabaRes.json() as any;
+          console.log('[WhatsApp Connect] WABAs:', JSON.stringify(wabaData, null, 2));
+          waba_id = wabaData.data?.[0]?.id || '';
+        }
+      }
+
+      // Get phone numbers from WABA
+      if (waba_id && !phone_number_id) {
+        const phonesRes = await fetch(
+          `https://graph.facebook.com/v21.0/${waba_id}/phone_numbers?fields=id,display_phone_number,verified_name`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const phonesData = await phonesRes.json() as any;
+        console.log('[WhatsApp Connect] Phone numbers:', JSON.stringify(phonesData, null, 2));
+        phone_number_id = phonesData.data?.[0]?.id || '';
+      }
     }
 
-    // 4. Subscribe app to WABA webhooks
+    if (!waba_id || !phone_number_id) {
+      console.error('[WhatsApp Connect] Could not discover WABA/phone:', { waba_id, phone_number_id });
+      return res.status(400).json({ error: 'Nao foi possivel encontrar sua conta WhatsApp Business. Complete o cadastro no popup do Facebook.' });
+    }
+
+    console.log(`[WhatsApp Connect] Using waba_id=${waba_id} phone_number_id=${phone_number_id}`);
+
+    // 3. Subscribe app to WABA webhooks
     await fetch(
       `https://graph.facebook.com/v21.0/${waba_id}/subscribed_apps`,
       { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
-    // 5. Get phone number display info
+    // 4. Get phone number display info
     const phoneRes = await fetch(
       `https://graph.facebook.com/v21.0/${phone_number_id}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -69,7 +118,7 @@ router.post('/connect', async (req: Request, res: Response) => {
     const phoneData = await phoneRes.json() as any;
     const displayPhone = phoneData.display_phone_number || phoneData.verified_name || '';
 
-    // 6. Register phone number (if needed)
+    // 5. Register phone number (if needed)
     await fetch(
       `https://graph.facebook.com/v21.0/${phone_number_id}/register`,
       {

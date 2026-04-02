@@ -18,6 +18,7 @@ export default function WhatsAppConnectPage() {
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState('')
+  const [fbReady, setFbReady] = useState(false)
   const signupDataRef = useRef<SignupData | null>(null)
 
   // Fetch WhatsApp connection status on mount
@@ -55,70 +56,93 @@ export default function WhatsAppConnectPage() {
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
-  // Initialize Facebook SDK
+  // Load Facebook SDK dynamically
   useEffect(() => {
     window.fbAsyncInit = () => {
-      window.FB.init({
-        appId: import.meta.env.VITE_FB_APP_ID || '',
-        autoLogAppEvents: true,
-        xfbml: true,
-        version: 'v21.0',
-      })
+      setFbReady(true)
     }
 
-    // If SDK already loaded, re-init
+    // SDK already loaded
     if (window.FB) {
-      window.FB.init({
-        appId: import.meta.env.VITE_FB_APP_ID || '',
-        autoLogAppEvents: true,
-        xfbml: true,
-        version: 'v21.0',
-      })
+      setFbReady(true)
+      return
+    }
+
+    // Inject script if not already in the DOM
+    if (!document.getElementById('facebook-jssdk')) {
+      const script = document.createElement('script')
+      script.id = 'facebook-jssdk'
+      script.src = 'https://connect.facebook.net/en_US/sdk.js'
+      script.async = true
+      script.defer = true
+      script.crossOrigin = 'anonymous'
+      script.onerror = () => {
+        setError('Nao foi possivel carregar o Facebook SDK. Desative o bloqueador de anuncios e recarregue a pagina.')
+      }
+      document.body.appendChild(script)
     }
   }, [])
 
   const handleConnect = () => {
-    if (!window.FB) {
-      setError('Facebook SDK nao carregado. Recarregue a pagina.')
+    if (!fbReady || !window.FB) {
+      setError('Facebook SDK nao carregado. Desative o bloqueador de anuncios e recarregue a pagina.')
       return
     }
+
+    // Always init right before login to guarantee correct state
+    window.FB.init({
+      appId: import.meta.env.VITE_FB_APP_ID || '',
+      autoLogAppEvents: true,
+      xfbml: true,
+      version: 'v21.0',
+    })
 
     setConnecting(true)
     setError('')
     signupDataRef.current = null
 
     window.FB.login(
-      async (response: FBLoginResponse) => {
+      (response: FBLoginResponse) => {
+        console.log('[WA Connect] FB.login response:', JSON.stringify(response))
         if (response.authResponse) {
           const code = response.authResponse.code
+          console.log('[WA Connect] Got code, waiting for signup data...')
 
           // Small delay to allow the WA_EMBEDDED_SIGNUP message to arrive
-          await new Promise((resolve) => setTimeout(resolve, 500))
+          setTimeout(() => {
+            const payload = {
+              code,
+              waba_id: signupDataRef.current?.waba_id || '',
+              phone_number_id: signupDataRef.current?.phone_number_id || '',
+            }
+            console.log('[WA Connect] Sending to backend:', JSON.stringify(payload))
 
-          try {
-            const result = await api<{
+            api<{
               phoneNumber: string
               connectedAt: string
             }>('/whatsapp/connect', {
               method: 'POST',
-              body: JSON.stringify({
-                code,
-                waba_id: signupDataRef.current?.waba_id || '',
-                phone_number_id: signupDataRef.current?.phone_number_id || '',
-              }),
+              body: JSON.stringify(payload),
             })
-            setStatus({
-              connected: true,
-              phoneNumber: result.phoneNumber,
-              connectedAt: result.connectedAt,
-            })
-          } catch {
-            setError('Erro ao conectar. Tente novamente.')
-          }
+              .then((result) => {
+                console.log('[WA Connect] Success:', JSON.stringify(result))
+                setStatus({
+                  connected: true,
+                  phoneNumber: result.phoneNumber,
+                  connectedAt: result.connectedAt,
+                })
+              })
+              .catch((err) => {
+                console.error('[WA Connect] Error:', err)
+                setError(`Erro ao conectar: ${err instanceof Error ? err.message : 'Tente novamente.'}`)
+              })
+              .finally(() => setConnecting(false))
+          }, 1000)
         } else {
+          console.warn('[WA Connect] No authResponse — user cancelled or error')
           setError('Autorizacao cancelada pelo usuario.')
+          setConnecting(false)
         }
-        setConnecting(false)
       },
       {
         config_id: import.meta.env.VITE_FB_CONFIG_ID || '',
