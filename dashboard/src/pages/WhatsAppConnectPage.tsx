@@ -148,7 +148,7 @@ export default function WhatsAppConnectPage() {
       },
       {
         config_id: import.meta.env.VITE_FB_CONFIG_ID || '',
-        response_type: 'code',
+        response_type: 'token',
         override_default_response_type: true,
         extras: {
           setup: {},
