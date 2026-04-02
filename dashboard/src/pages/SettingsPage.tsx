@@ -196,11 +196,11 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Configuracoes</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-5">Configuracoes</h1>
 
       {/* ── SECTION 1: Dados do Restaurante ── */}
       <section className="mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+        <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
           <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">1</span>
           Dados do Restaurante
         </h2>
@@ -208,20 +208,20 @@ export function SettingsPage() {
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Nome do restaurante</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Telefone WhatsApp</label>
             <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+5511999999999"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Fuso horario</label>
             <input type="text" value={timezone} onChange={e => setTimezone(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-base bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
           </div>
           <button onClick={handleSave} disabled={saving || !name.trim()}
-            className="w-full bg-[#25D366] text-white py-2 rounded-lg font-semibold text-base hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
+            className="w-full bg-[#25D366] text-white py-1.5 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
           {saved && <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-sm">Salvo!</div>}
@@ -230,7 +230,7 @@ export function SettingsPage() {
 
       {/* ── SECTION 2: Mensagens Automaticas ── */}
       <section className="mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+        <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
           <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">2</span>
           Mensagens Automaticas
         </h2>
@@ -238,11 +238,11 @@ export function SettingsPage() {
           <p className="text-sm text-gray-400 mb-3">Ative ou desative as mensagens que o sistema envia automaticamente via WhatsApp.</p>
           <div className="space-y-2">
             {templates.map(tpl => (
-              <div key={tpl.id} className={`border rounded-xl p-3 transition-all ${tpl.isActive ? 'border-[#25D366] bg-white' : 'border-gray-200 bg-gray-100/50'}`}>
+              <div key={tpl.id} className={`border rounded-lg p-2 transition-all ${tpl.isActive ? 'border-[#25D366] bg-white' : 'border-gray-200 bg-gray-100/50'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <span className={`text-base font-semibold ${tpl.isActive ? 'text-gray-900' : 'text-gray-400'}`}>{tpl.name}</span>
-                    <span className={`ml-2 text-sm px-1.5 py-0.5 rounded-full font-medium ${tpl.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                    <span className={`text-sm font-semibold ${tpl.isActive ? 'text-gray-900' : 'text-gray-400'}`}>{tpl.name}</span>
+                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${tpl.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
                       {tpl.isActive ? 'Ativo' : 'Inativo'}
                     </span>
                   </div>
@@ -255,7 +255,7 @@ export function SettingsPage() {
                   </button>
                 </div>
                 {tpl.isActive && (
-                  <div className="mt-2 bg-[#DCF8C6] rounded-lg rounded-tl-none p-2 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap max-w-[85%]">
+                  <div className="mt-1.5 bg-[#DCF8C6] rounded-lg rounded-tl-none p-2 text-xs text-gray-800 leading-relaxed whitespace-pre-wrap max-w-[85%]">
                     {tpl.body
                       .replace(/\{\{nome?\}\}/gi, 'Maria')
                       .replace(/\{\{visitas?\}\}/gi, '5')
@@ -278,7 +278,7 @@ export function SettingsPage() {
       {/* ── SECTION 3: Hours (Plan B only) ── */}
       {isPlanB && (
         <section className="mb-8">
-          <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
             <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">3</span>
             Horarios
           </h2>
@@ -332,7 +332,7 @@ export function SettingsPage() {
       {/* ── SECTION 4: Table Layout (Plan B only) ── */}
       {isPlanB && (
         <section className="mb-8">
-          <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
             <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">4</span>
             Mesas e Layout
           </h2>
@@ -342,7 +342,7 @@ export function SettingsPage() {
 
       {/* ── SECTION 5: Plano e Precos ── */}
       <section className="mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+        <h2 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
           <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">5</span>
           Seu Plano
         </h2>
