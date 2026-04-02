@@ -26,16 +26,12 @@ const DAY_NAMES = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', '
 
 // Template display order (chronological: first received → last) and short descriptions
 const TEMPLATE_ORDER: Record<string, { order: number; desc: string }> = {
-  'Boas-vindas + Consentimento': { order: 1, desc: 'Primeiro contato + pedido de opt-in' },
-  'Pos-visita + Consentimento': { order: 2, desc: '24h apos visita, pede opt-in' },
-  'Obrigado pela visita': { order: 3, desc: 'Agradecimento apos cada visita' },
-  'Metade do caminho': { order: 4, desc: 'Ao completar 5 visitas' },
-  'Lembrete de sequencia': { order: 5, desc: 'Incentivo para manter streak' },
-  'Upgrade de nivel': { order: 6, desc: 'Quando sobe de tier' },
-  'Recompensa surpresa': { order: 7, desc: 'Surpresa aleatoria para fieis' },
-  'Desconto surpresa': { order: 8, desc: 'Desconto aleatorio para fieis' },
-  'Super fidelidade 20': { order: 9, desc: 'A cada 20 visitas: 20% desconto' },
-  'Retorna': { order: 10, desc: 'Reativacao de clientes inativos' },
+  'Pos-visita + Consentimento': { order: 1, desc: '24h apos visita, pede opt-in' },
+  'Metade do caminho': { order: 2, desc: 'Ao completar 5 visitas' },
+  'Recompensa por visitas': { order: 3, desc: 'Premio ao atingir marco de visitas' },
+  'Desconto surpresa': { order: 4, desc: 'Desconto aleatorio para fieis' },
+  'Cliente VIP — 20% desconto': { order: 5, desc: 'A cada 20 visitas: 20% desconto' },
+  'Reativacao': { order: 6, desc: 'Clientes inativos ha 30+ dias' },
 }
 
 const PLANS = [

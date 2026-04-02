@@ -110,59 +110,42 @@ export async function onVisitRegistered(customerId: string) {
   });
   const templateMap = new Map(templates.map((t) => [t.hsmTemplateName, t]));
 
-  // 5a. Post-visit thanks — REMOVED from here.
-  // Customers WITHOUT consent receive post_visit_thanks_v1 via postVisitConsent.job.ts (2h after visit).
-  // Customers WITH consent already said SIM — no need to ask again.
+  // ── All templates below must exist on Meta Business Manager ──
 
-  // 5b. Tier upgrade
-  if (tierChanged && templateMap.has("tier_upgrade_v1")) {
-    const discount = getDiscountForTier(newTier, r);
-    const beneficios = getBenefitsForTier(newTier, discount);
+  // 5a. Post-visit + consent — handled by postVisitConsent.job.ts (24h after visit)
+  // Only sent to customers WITHOUT opt-in consent.
 
-    await sendAndLog(r.id, customerId, phone, "tier_upgrade", [name, TIER_EMOJI[newTier], TIER_NAMES_PT[newTier], beneficios], {
-      oldTier,
-      newTier,
-      visits: currentVisits,
-    }, waCredentials);
-  }
-
-  // 5c. Streak reminder (if approaching target)
-  if (
-    newStreak > 0 &&
-    newStreak < r.streakTargetVisits &&
-    templateMap.has("streak_reminder_v1")
-  ) {
-    const faltam = r.streakTargetVisits - newStreak;
-    const prazoDate = new Date(now.getTime() + (r.streakWindowDays * 24 * 60 * 60 * 1000));
-    const prazo = prazoDate.toLocaleDateString("pt-BR", { weekday: "long" });
-
-    await sendAndLog(r.id, customerId, phone, "streak_reminder", [name, String(newStreak), String(faltam), prazo], {
-      streak: newStreak,
-      target: r.streakTargetVisits,
-    }, waCredentials);
-  }
-
-  // 5e. Surprise reward
-  if (triggerSurprise && templateMap.has("surprise_reward_v1")) {
-    await sendAndLog(r.id, customerId, phone, "surprise_reward", [name], {
-      visits: currentVisits,
-    }, waCredentials);
-  }
-
-  // 5f. Milestone halfway — at 5 visits (halfway to 10-visit reward)
+  // 5b. Milestone halfway — at exactly 5 visits
   if (currentVisits === 5 && templateMap.has("milestone_halfway_v1")) {
     await sendAndLog(r.id, customerId, phone, "milestone_halfway", [name, String(currentVisits)], {
       visits: currentVisits,
     }, waCredentials);
   }
 
-  // 5g. Loyalty VIP — 20% discount at every multiple of 20 visits (20, 40, 60, 80...)
+  // 5c. Reward earned — at milestone visit counts (10, 15, etc.)
+  const rewardMilestones = [10, 15, 25, 30, 35, 45, 50];
+  if (rewardMilestones.includes(currentVisits) && templateMap.has("reward_earned_v1")) {
+    await sendAndLog(r.id, customerId, phone, "reward_earned", [name, String(currentVisits)], {
+      visits: currentVisits,
+    }, waCredentials);
+  }
+
+  // 5d. Surprise discount — random chance for loyal customers (3+ visits)
+  if (triggerSurprise && templateMap.has("surprise_discount_v1")) {
+    await sendAndLog(r.id, customerId, phone, "surprise_discount", [name], {
+      visits: currentVisits,
+    }, waCredentials);
+  }
+
+  // 5e. Loyalty VIP — 20% discount at every multiple of 20 visits (20, 40, 60, 80...)
   if (currentVisits >= 20 && currentVisits % 20 === 0 && templateMap.has("loyalty_vip_v1")) {
     await sendAndLog(r.id, customerId, phone, "loyalty_vip", [name, String(currentVisits)], {
       visits: currentVisits,
       discount: 20,
     }, waCredentials);
   }
+
+  // 5f. Reactivation — handled by dailyAutomation() cron (customers inactive 30+ days)
 
   console.log(
     `[Loyalty] Visit processed: customer=${customerId} visits=${currentVisits} tier=${oldTier}→${newTier} streak=${newStreak} surprise=${triggerSurprise}`

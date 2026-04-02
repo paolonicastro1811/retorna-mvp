@@ -11,17 +11,10 @@ const prisma = new PrismaClient();
 // hsmTemplateName must match what's registered on Meta Business Manager.
 // The restaurant owner toggles them ON/OFF via isActive in Settings.
 
+// Only templates that exist on Meta Business Manager (6 approved HSMs)
 const LOYALTY_TEMPLATES = [
   {
-    name: "Boas-vindas + Consentimento",
-    templateKey: "welcome_consent",
-    body: "Oi {{nome}}! 😊 Obrigado por falar com a gente. Posso te enviar novidades e ofertas exclusivas pelo WhatsApp? Responda SIM para aceitar ou NAO se preferir nao receber.",
-    hsmTemplateName: "welcome_consent_v1",
-    hsmLanguage: "pt_BR",
-    isActive: true,
-  },
-  {
-    name: "Obrigado pela visita",
+    name: "Pos-visita + Consentimento",
     templateKey: "post_visit_thanks",
     body: "Oi {{customer_name}}, obrigado por ter nos visitado! 😊 Foi um prazer te receber.\n\nGostaria de receber ofertas exclusivas e novidades do nosso restaurante? Sem spam, so coisas boas — enviaremos apenas quando tivermos algo especial para voce.\n\nResponda *SIM* para receber ou simplesmente ignore esta mensagem. 🍽️",
     hsmTemplateName: "post_visit_thanks_v1",
@@ -29,57 +22,41 @@ const LOYALTY_TEMPLATES = [
     isActive: true,
   },
   {
-    name: "Upgrade de nivel",
-    templateKey: "tier_upgrade",
-    body: "{{nome}}, voce subiu de nivel! {{tier_emoji}} Agora voce e cliente {{tier_nome}}! Isso significa: {{beneficios}}. Obrigado pela fidelidade!",
-    hsmTemplateName: "tier_upgrade_v1",
+    name: "Recompensa por visitas",
+    templateKey: "reward_earned",
+    body: "Oi {{customer_name}}! 🎁 Parabens! Voce completou {{visit_count}} visitas e ganhou uma recompensa especial. Mostre essa mensagem no caixa na sua proxima visita.\n\nResponda *SAIR* se nao deseja mais receber nossas mensagens.",
+    hsmTemplateName: "reward_earned_v1",
     hsmLanguage: "pt_BR",
-    isActive: false,
+    isActive: true,
   },
   {
-    name: "Lembrete de sequencia",
-    templateKey: "streak_reminder",
-    body: "Oi {{nome}}! 🔥 Voce esta com {{streak}} visitas seguidas esta semana! Volte mais {{faltam}}x ate {{prazo}} e ganhe pontos em dobro!",
-    hsmTemplateName: "streak_reminder_v1",
+    name: "Desconto surpresa",
+    templateKey: "surprise_discount",
+    body: "Oi {{customer_name}}! 🎉 Temos uma surpresa para voce: 10% de desconto na sua proxima visita! Mostre essa mensagem no caixa. Valido por 7 dias.\n\nResponda *SAIR* se nao deseja mais receber nossas mensagens.",
+    hsmTemplateName: "surprise_discount_v1",
     hsmLanguage: "pt_BR",
-    isActive: false,
+    isActive: true,
   },
   {
-    name: "Retorna",
+    name: "Metade do caminho",
+    templateKey: "milestone_halfway",
+    body: "Oi {{customer_name}}! 🔥 Voce ja tem {{visit_count}} visitas! Esta na metade do caminho para desbloquear um desconto exclusivo. Continue assim!\n\nResponda *SAIR* se nao deseja mais receber nossas mensagens.",
+    hsmTemplateName: "milestone_halfway_v1",
+    hsmLanguage: "pt_BR",
+    isActive: true,
+  },
+  {
+    name: "Reativacao",
     templateKey: "reactivation",
-    body: "Oi {{nome}}, faz tempo! Temos saudade 😊 Volta e ganha {{desconto}}% de desconto na proxima visita. Te esperamos!",
+    body: "Oi {{customer_name}}, tudo bem? 😊 Faz um tempinho que voce nao aparece por aqui e nos sentimos sua falta!\n\nQue tal nos fazer uma visita? Estamos te esperando de bracos abertos! 🍽️\n\nResponda *SAIR* se nao deseja mais receber nossas mensagens.",
     hsmTemplateName: "reactivation_v1",
     hsmLanguage: "pt_BR",
     isActive: true,
   },
   {
-    name: "Recompensa surpresa",
-    templateKey: "surprise_reward",
-    body: "Oi {{nome}}! 🎁 Voce ganhou uma recompensa surpresa! Venha ao restaurante e mostre essa mensagem no caixa para descobrir o que e. Vale ate amanha!",
-    hsmTemplateName: "surprise_reward_v1",
-    hsmLanguage: "pt_BR",
-    isActive: false,
-  },
-  {
-    name: "Desconto surpresa",
-    templateKey: "surprise_discount",
-    body: "Oi {{customer_name}}! 🎉 Temos uma surpresa para voce: 10% de desconto na sua proxima visita! Mostre essa mensagem no caixa. Valido por 7 dias.",
-    hsmTemplateName: "surprise_discount_v1",
-    hsmLanguage: "pt_BR",
-    isActive: false,
-  },
-  {
-    name: "Metade do caminho",
-    templateKey: "milestone_halfway",
-    body: "Oi {{customer_name}}! 🔥 Voce ja tem {{visits}} visitas! Esta na metade do caminho para desbloquear um desconto exclusivo. Continue assim!",
-    hsmTemplateName: "milestone_halfway_v1",
-    hsmLanguage: "pt_BR",
-    isActive: false,
-  },
-  {
     name: "Cliente VIP — 20% desconto",
     templateKey: "loyalty_vip",
-    body: "Oi {{customer_name}}! 🏆 Parabens pelas {{visits}} visitas! Voce e um cliente VIP! Ganhou 20% de desconto na proxima visita. Mostre essa mensagem no caixa. Valido por 7 dias.",
+    body: "Oi {{customer_name}}, voce e incrivel! 🏆 Completou {{visit_count}} visitas conosco!\n\nVoce ganhou 20% de desconto na sua proxima visita. Mostre esta mensagem ao garcom para resgatar. Valido por 7 dias.\n\nObrigado por ser um cliente tao especial! 🍽️\n\nResponda *SAIR* se nao deseja mais receber nossas mensagens.",
     hsmTemplateName: "loyalty_vip_v1",
     hsmLanguage: "pt_BR",
     isActive: true,
@@ -95,11 +72,24 @@ async function main() {
     return;
   }
 
+  const validHsmNames = LOYALTY_TEMPLATES.map(t => t.hsmTemplateName);
+
   for (const restaurant of restaurants) {
     console.log(`\nSeeding templates for: ${restaurant.name} (${restaurant.id})`);
 
+    // Delete templates not in the seed (old/orphaned)
+    const deleted = await prisma.messageTemplate.deleteMany({
+      where: {
+        restaurantId: restaurant.id,
+        isCustom: false,
+        hsmTemplateName: { notIn: validHsmNames },
+      },
+    });
+    if (deleted.count > 0) {
+      console.log(`  [cleaned] Removed ${deleted.count} old template(s)`);
+    }
+
     for (const tpl of LOYALTY_TEMPLATES) {
-      // Upsert: update if exists (by restaurant + hsmTemplateName), create if not
       const existing = await prisma.messageTemplate.findFirst({
         where: {
           restaurantId: restaurant.id,
@@ -108,7 +98,12 @@ async function main() {
       });
 
       if (existing) {
-        console.log(`  [skip] ${tpl.name} — already exists`);
+        // Update name and body to match seed
+        await prisma.messageTemplate.update({
+          where: { id: existing.id },
+          data: { name: tpl.name, body: tpl.body },
+        });
+        console.log(`  [updated] ${tpl.name}`);
         continue;
       }
 
