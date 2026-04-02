@@ -34,8 +34,8 @@ router.post('/connect', async (req: Request, res: Response) => {
     const tokenData = await tokenRes.json() as any;
 
     if (tokenData.error) {
-      console.error('[WhatsApp Connect] Token exchange error:', tokenData.error);
-      return res.status(400).json({ error: 'Falha na autorizacao do Facebook' });
+      console.error('[WhatsApp Connect] Token exchange error:', JSON.stringify(tokenData.error));
+      return res.status(400).json({ error: `Falha na autorizacao: ${tokenData.error.message || JSON.stringify(tokenData.error)}` });
     }
 
     const accessToken = tokenData.access_token;
