@@ -27,12 +27,9 @@ router.post('/connect', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Facebook App nao configurado no servidor' });
     }
 
-    // 1. Exchange code for token
-    const redirectUri = req.body.redirect_uri || '';
-    console.log(`[WhatsApp Connect] Token exchange with redirect_uri=${redirectUri}`);
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    // 1. Exchange code for token (Embedded Signup requires empty redirect_uri)
+    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}`;
     const tokenRes = await fetch(tokenUrl);
-    const tokenData = await tokenRes.json() as any;
     const tokenData = await tokenRes.json() as any;
 
     if (tokenData.error) {
