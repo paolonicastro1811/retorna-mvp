@@ -37,11 +37,14 @@ interface AutomationStats {
 const TEMPLATE_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
   post_visit_thanks: { label: 'Obrigado pela visita', emoji: '🙏', color: 'bg-blue-50 text-blue-700 border-blue-200' },
   tier_upgrade: { label: 'Upgrade de nivel', emoji: '⬆️', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-  reward_earned: { label: 'Recompensa desbloqueada', emoji: '🎉', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
   streak_reminder: { label: 'Lembrete de sequencia', emoji: '🔥', color: 'bg-orange-50 text-orange-700 border-orange-200' },
   surprise_reward: { label: 'Recompensa surpresa', emoji: '🎁', color: 'bg-pink-50 text-pink-700 border-pink-200' },
+  surprise_discount: { label: 'Desconto surpresa', emoji: '🎉', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  milestone_halfway: { label: 'Metade do caminho', emoji: '🔥', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+  loyalty_vip: { label: 'Cliente VIP 20%', emoji: '🏆', color: 'bg-amber-50 text-amber-700 border-amber-200' },
   reactivation: { label: 'Retorna', emoji: '💚', color: 'bg-green-50 text-green-700 border-green-200' },
   welcome_consent: { label: 'Boas-vindas', emoji: '👋', color: 'bg-gray-50 text-gray-700 border-gray-200' },
+  post_visit_consent: { label: 'Pos-visita consenso', emoji: '📩', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
 }
 
 const TIER_CONFIG: Record<string, { label: string; emoji: string; color: string }> = {

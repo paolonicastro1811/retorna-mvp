@@ -3,7 +3,8 @@
 //
 // Two entry points:
 // 1. onVisitRegistered() — called synchronously after each visit
-//    Handles: tier upgrade, streak, surprise, post-visit thanks
+//    Handles: tier upgrade, streak, surprise, post-visit thanks,
+//             milestone halfway (5 visits), loyalty VIP (every 20 visits)
 // 2. runDailyAutomation() — called by cron every day
 //    Handles: reactivation messages, streak expiry
 // ============================================================
@@ -109,20 +110,9 @@ export async function onVisitRegistered(customerId: string) {
   });
   const templateMap = new Map(templates.map((t) => [t.hsmTemplateName, t]));
 
-  // 5a. Post-visit thanks
-  if (templateMap.has("post_visit_thanks_v1")) {
-    const discount = getDiscountForTier(newTier, r);
-    const nextTier = getNextTier(newTier);
-    const visitsToNext = nextTier ? getVisitsForTier(nextTier, r) - currentVisits : 0;
-    const progresso = nextTier
-      ? `Faltam ${visitsToNext} visitas para o nivel ${TIER_NAMES_PT[nextTier]} ${TIER_EMOJI[nextTier]}`
-      : `Voce ja e nivel maximo: Ouro ${TIER_EMOJI.ouro}`;
-
-    await sendAndLog(r.id, customerId, phone, "post_visit_thanks", [name, String(currentVisits), progresso], {
-      visits: currentVisits,
-      tier: newTier,
-    }, waCredentials);
-  }
+  // 5a. Post-visit thanks — REMOVED from here.
+  // Customers WITHOUT consent receive post_visit_thanks_v1 via postVisitConsent.job.ts (2h after visit).
+  // Customers WITH consent already said SIM — no need to ask again.
 
   // 5b. Tier upgrade
   if (tierChanged && templateMap.has("tier_upgrade_v1")) {
@@ -136,17 +126,7 @@ export async function onVisitRegistered(customerId: string) {
     }, waCredentials);
   }
 
-  // 5c. Reward earned (at tier threshold exact visits)
-  const thresholds = [r.tierFrequenteMinVisits, r.tierPrataMinVisits, r.tierOuroMinVisits];
-  if (thresholds.includes(currentVisits) && templateMap.has("reward_earned_v1")) {
-    const discount = getDiscountForTier(newTier, r);
-    await sendAndLog(r.id, customerId, phone, "reward_earned", [name, String(currentVisits), String(discount)], {
-      visits: currentVisits,
-      discount,
-    }, waCredentials);
-  }
-
-  // 5d. Streak reminder (if approaching target)
+  // 5c. Streak reminder (if approaching target)
   if (
     newStreak > 0 &&
     newStreak < r.streakTargetVisits &&
@@ -166,6 +146,21 @@ export async function onVisitRegistered(customerId: string) {
   if (triggerSurprise && templateMap.has("surprise_reward_v1")) {
     await sendAndLog(r.id, customerId, phone, "surprise_reward", [name], {
       visits: currentVisits,
+    }, waCredentials);
+  }
+
+  // 5f. Milestone halfway — at 5 visits (halfway to 10-visit reward)
+  if (currentVisits === 5 && templateMap.has("milestone_halfway_v1")) {
+    await sendAndLog(r.id, customerId, phone, "milestone_halfway", [name, String(currentVisits)], {
+      visits: currentVisits,
+    }, waCredentials);
+  }
+
+  // 5g. Loyalty VIP — 20% discount at every multiple of 20 visits (20, 40, 60, 80...)
+  if (currentVisits >= 20 && currentVisits % 20 === 0 && templateMap.has("loyalty_vip_v1")) {
+    await sendAndLog(r.id, customerId, phone, "loyalty_vip", [name, String(currentVisits)], {
+      visits: currentVisits,
+      discount: 20,
     }, waCredentials);
   }
 

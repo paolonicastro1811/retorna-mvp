@@ -43,6 +43,9 @@ model Restaurant {
   subscriptionStatus     String              @default("trialing") @map("subscription_status")
   trialDays              Int                 @default(30) @map("trial_days")
   trialStartDate         DateTime?           @map("trial_start_date")
+  maxCustomCampaignsMonth Int                @default(2) @map("max_custom_campaigns_month")
+  maxMsgsPerCustomerMonth Int                @default(4) @map("max_msgs_per_customer_month")
+  minCampaignIntervalDays Int                @default(7) @map("min_campaign_interval_days")
   automationLogs         AutomationLog[]
   campaigns              Campaign[]
   conversationReplies    ConversationReply[]
@@ -194,18 +197,24 @@ model CampaignAudienceItem {
 }
 
 model MessageTemplate {
-  id              String     @id @default(cuid())
-  restaurantId    String     @map("restaurant_id")
-  name            String
-  body            String
-  channel         String     @default("whatsapp")
-  isActive        Boolean    @default(true) @map("is_active")
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
-  hsmLanguage     String     @default("pt_BR") @map("hsm_language")
-  hsmTemplateName String?    @map("hsm_template_name")
-  campaigns       Campaign[]
-  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  id                 String     @id @default(cuid())
+  restaurantId       String     @map("restaurant_id")
+  name               String
+  body               String
+  channel            String     @default("whatsapp")
+  isActive           Boolean    @default(true) @map("is_active")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  hsmLanguage        String     @default("pt_BR") @map("hsm_language")
+  hsmTemplateName    String?    @map("hsm_template_name")
+  isCustom           Boolean    @default(false) @map("is_custom")
+  metaStatus         String     @default("draft") @map("meta_status") // draft | ai_review | ai_rejected | submitted | approved | rejected
+  metaCategory       String     @default("MARKETING") @map("meta_category")
+  metaRejectedReason String?    @map("meta_rejected_reason")
+  aiReviewNotes      String?    @map("ai_review_notes")
+  submittedToMetaAt  DateTime?  @map("submitted_to_meta_at")
+  campaigns          Campaign[]
+  restaurant         Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId])
   @@map("message_templates")

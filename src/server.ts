@@ -20,6 +20,7 @@ import { runLifecycleRefresh } from "./jobs/lifecycleRefresh.job";
 import { runPostVisitConsent } from "./jobs/postVisitConsent.job";
 import { runDailyAutomation } from "./services/loyalty.service";
 import { runSurpriseDiscount } from "./jobs/surpriseDiscount.job";
+import { pollMetaTemplateStatuses } from "./services/metaTemplate.service";
 import { liveStatsRouter } from "./routes/liveStats.routes";
 import whatsappConnectRouter from "./routes/whatsapp-connect.routes";
 import { prisma } from "./database/client";
@@ -282,6 +283,18 @@ cron.schedule("0 14 * * *", async () => {
     }
   } catch (err) {
     console.error("[Cron:SurpriseDiscount] Error:", err);
+  }
+});
+
+// Meta template status polling: every 30 minutes
+cron.schedule("*/30 * * * *", async () => {
+  try {
+    const result = await pollMetaTemplateStatuses();
+    if (result.updated > 0 || result.errors > 0) {
+      console.log(`[Cron:MetaTemplatePoll] ${result.updated} updated, ${result.errors} errors`);
+    }
+  } catch (err) {
+    console.error("[Cron:MetaTemplatePoll] Error:", err);
   }
 });
 

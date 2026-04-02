@@ -1,6 +1,6 @@
 // ============================================================
 // Post-Visit Consent Job
-// Sends "Foi um prazer" follow-up ~2h after a visit,
+// Sends "Foi um prazer" follow-up the day after a visit,
 // asking for marketing opt-in consent via WhatsApp.
 // Only sends once per customer (checked via welcomeAutoReplySentAt).
 // ============================================================
@@ -9,11 +9,11 @@ import { prisma } from "../database/client";
 import { whatsappProvider, WhatsAppCredentials } from "../services/whatsapp.provider";
 
 export async function runPostVisitConsent(): Promise<{ sent: number; errors: number }> {
-  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-  const WINDOW_MS = 30 * 60 * 1000; // 30min window to catch visits in cron cycles
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const WINDOW_MS = 60 * 60 * 1000; // 1h window to catch visits in cron cycles
 
-  const windowEnd = new Date(Date.now() - TWO_HOURS_MS);
-  const windowStart = new Date(Date.now() - TWO_HOURS_MS - WINDOW_MS);
+  const windowEnd = new Date(Date.now() - ONE_DAY_MS);
+  const windowStart = new Date(Date.now() - ONE_DAY_MS - WINDOW_MS);
 
   // Find visit events within the 2h-2h30m window whose customer
   // has never received the welcome/consent message

@@ -16,6 +16,7 @@ import WhatsAppConnectPage from './pages/WhatsAppConnectPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
 import { BillingPage } from './pages/BillingPage'
+import { CustomTemplatesPage } from './pages/CustomTemplatesPage'
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
             <Route index element={<CustomersPage />} />
             <Route path="visita" element={<VisitPage />} />
             <Route path="campanhas" element={<AutomacoesPage />} />
+            <Route path="templates" element={<CustomTemplatesPage />} />
             <Route path="leads" element={<BookingLeadsPage />} />
             <Route path="sala-ao-vivo" element={<SalaAoVivoPage />} />
             <Route path="whatsapp" element={<WhatsAppConnectPage />} />

@@ -62,6 +62,7 @@ const links = [
   { to: '/painel', label: 'Clientes', planB: false },
   { to: '/painel/visita', label: 'Registrar Visita', planB: false },
   { to: '/painel/campanhas', label: 'Automacoes', planB: false },
+  { to: '/painel/templates', label: 'Templates Custom', planB: false },
   { to: '/painel/leads', label: 'Reservas', planB: true },
   { to: '/painel/sala-ao-vivo', label: 'Sala ao Vivo', planB: true },
 ]

@@ -7,6 +7,9 @@ import { param } from "../shared/params";
 import { prisma } from "../database/client";
 import { validate } from "../middleware/validate";
 import { createCampaignSchema, createTemplateSchema } from "../schemas";
+import { reviewTemplate } from "../services/templateAiReview.service";
+import { submitTemplateToMeta, deleteTemplateFromMeta } from "../services/metaTemplate.service";
+import { checkCampaignLimits } from "../services/campaignLimits.service";
 
 const router = Router();
 
@@ -54,6 +57,134 @@ router.patch("/:restaurantId/templates/:templateId", async (req: Request, res: R
   } catch (err) {
     console.error('[Route] Error:', err);
     res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// --- Custom Templates: Create + AI Review ---
+
+router.post("/:restaurantId/templates/custom", async (req: Request, res: Response) => {
+  try {
+    const restaurantId = param(req, "restaurantId");
+    const { name, body } = req.body;
+    if (!name || !body) return res.status(400).json({ error: "name and body are required" });
+
+    // Check max custom templates (3 per restaurant)
+    const existingCustom = await prisma.messageTemplate.count({
+      where: { restaurantId, isCustom: true },
+    });
+    if (existingCustom >= 3) {
+      return res.status(400).json({ error: "Limite de 3 templates custom atingido. Delete um existente para criar outro." });
+    }
+
+    // AI review
+    const review = await reviewTemplate(body);
+
+    if (!review.approved) {
+      return res.status(422).json({
+        error: "Template nao aprovado pela revisao AI.",
+        review,
+      });
+    }
+
+    // Create template in DB
+    const template = await prisma.messageTemplate.create({
+      data: {
+        restaurantId,
+        name,
+        body,
+        channel: "whatsapp",
+        isCustom: true,
+        metaStatus: "ai_review",
+        isActive: false,
+        aiReviewNotes: JSON.stringify(review),
+      },
+    });
+
+    // Update status to passed AI review
+    await prisma.messageTemplate.update({
+      where: { id: template.id },
+      data: { metaStatus: "draft" },
+    });
+
+    res.status(201).json({ template: { ...template, metaStatus: "draft" }, review });
+  } catch (err) {
+    console.error("[Route] Error:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// --- AI Review Only (preview before saving) ---
+
+router.post("/:restaurantId/templates/ai-review", async (req: Request, res: Response) => {
+  try {
+    const { body } = req.body;
+    if (!body) return res.status(400).json({ error: "body is required" });
+    const review = await reviewTemplate(body);
+    res.json(review);
+  } catch (err) {
+    console.error("[Route] Error:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// --- Submit Custom Template to Meta ---
+
+router.post("/:restaurantId/templates/:templateId/submit-to-meta", async (req: Request, res: Response) => {
+  try {
+    const templateId = param(req, "templateId");
+
+    const template = await prisma.messageTemplate.findUnique({ where: { id: templateId } });
+    if (!template) return res.status(404).json({ error: "Template nao encontrado" });
+    if (!template.isCustom) return res.status(400).json({ error: "Apenas templates custom podem ser enviados para Meta" });
+    if (template.metaStatus === "submitted") return res.status(400).json({ error: "Template ja esta em revisao pela Meta" });
+    if (template.metaStatus === "approved") return res.status(400).json({ error: "Template ja esta aprovado" });
+
+    const result = await submitTemplateToMeta(templateId);
+
+    if (result.success) {
+      const updated = await prisma.messageTemplate.findUnique({ where: { id: templateId } });
+      res.json({ success: true, template: updated });
+    } else {
+      res.status(400).json({ success: false, error: result.error });
+    }
+  } catch (err) {
+    console.error("[Route] Error:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// --- Delete Custom Template (from Meta + DB) ---
+
+router.delete("/:restaurantId/templates/:templateId", async (req: Request, res: Response) => {
+  try {
+    const templateId = param(req, "templateId");
+    const template = await prisma.messageTemplate.findUnique({ where: { id: templateId } });
+    if (!template) return res.status(404).json({ error: "Template nao encontrado" });
+    if (!template.isCustom) return res.status(400).json({ error: "Templates padrao nao podem ser deletados" });
+
+    // If submitted to Meta, delete from Meta first
+    if (template.metaStatus === "submitted" || template.metaStatus === "approved") {
+      await deleteTemplateFromMeta(templateId);
+    } else {
+      await prisma.messageTemplate.delete({ where: { id: templateId } });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[Route] Error:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+// --- Campaign Limits Check ---
+
+router.get("/:restaurantId/campaign-limits", async (req: Request, res: Response) => {
+  try {
+    const result = await checkCampaignLimits(param(req, "restaurantId"));
+    res.json(result);
+  } catch (err) {
+    console.error("[Route] Error:", err);
+    res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
 
@@ -122,6 +253,19 @@ router.post("/campaigns/:campaignId/queue", async (req: Request, res: Response) 
 
 router.post("/campaigns/:campaignId/dispatch", async (req: Request, res: Response) => {
   try {
+    // Check if campaign uses a custom template → enforce limits
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: param(req, "campaignId") },
+      include: { template: true },
+    });
+
+    if (campaign?.template?.isCustom) {
+      const limits = await checkCampaignLimits(campaign.restaurantId);
+      if (!limits.allowed) {
+        return res.status(429).json({ error: limits.reason, details: limits.details });
+      }
+    }
+
     const result = await messagingService.dispatchCampaign(param(req, "campaignId"));
     res.json(result);
   } catch (err) {

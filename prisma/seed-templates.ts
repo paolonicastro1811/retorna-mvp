@@ -29,14 +29,6 @@ const LOYALTY_TEMPLATES = [
     isActive: true,
   },
   {
-    name: "Recompensa desbloqueada",
-    templateKey: "reward_earned",
-    body: "Parabens {{nome}}! 🎉 Voce completou {{visitas}} visitas e ganhou {{desconto}}% de desconto na proxima visita! Mostre essa mensagem no caixa. Te esperamos!",
-    hsmTemplateName: "reward_earned_v1",
-    hsmLanguage: "pt_BR",
-    isActive: false, // Owner ativa quando quiser
-  },
-  {
     name: "Upgrade de nivel",
     templateKey: "tier_upgrade",
     body: "{{nome}}, voce subiu de nivel! {{tier_emoji}} Agora voce e cliente {{tier_nome}}! Isso significa: {{beneficios}}. Obrigado pela fidelidade!",
@@ -67,6 +59,30 @@ const LOYALTY_TEMPLATES = [
     hsmTemplateName: "surprise_reward_v1",
     hsmLanguage: "pt_BR",
     isActive: false,
+  },
+  {
+    name: "Desconto surpresa",
+    templateKey: "surprise_discount",
+    body: "Oi {{customer_name}}! 🎉 Temos uma surpresa para voce: 10% de desconto na sua proxima visita! Mostre essa mensagem no caixa. Valido por 7 dias.",
+    hsmTemplateName: "surprise_discount_v1",
+    hsmLanguage: "pt_BR",
+    isActive: false,
+  },
+  {
+    name: "Metade do caminho",
+    templateKey: "milestone_halfway",
+    body: "Oi {{customer_name}}! 🔥 Voce ja tem {{visits}} visitas! Esta na metade do caminho para desbloquear um desconto exclusivo. Continue assim!",
+    hsmTemplateName: "milestone_halfway_v1",
+    hsmLanguage: "pt_BR",
+    isActive: false,
+  },
+  {
+    name: "Cliente VIP — 20% desconto",
+    templateKey: "loyalty_vip",
+    body: "Oi {{customer_name}}! 🏆 Parabens pelas {{visits}} visitas! Voce e um cliente VIP! Ganhou 20% de desconto na proxima visita. Mostre essa mensagem no caixa. Valido por 7 dias.",
+    hsmTemplateName: "loyalty_vip_v1",
+    hsmLanguage: "pt_BR",
+    isActive: true,
   },
 ];
 
