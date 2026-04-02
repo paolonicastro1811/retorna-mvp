@@ -112,7 +112,7 @@ export const whatsappProvider = {
       return { success: true, providerMsgId: fakeId, attempts: 1 };
     }
 
-    const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
+    const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
     let lastError = "";
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {

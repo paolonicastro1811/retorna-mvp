@@ -137,6 +137,10 @@ app.use("/restaurants", apiLimiter, (req: Request, res: Response, next: NextFunc
     }
     return onboardingLimiter(req, res, next);
   }
+  // Allow POST /restaurants/check-duplicate without auth (onboarding step 1)
+  if (req.method === "POST" && req.path === "/check-duplicate") {
+    return onboardingLimiter(req, res, next);
+  }
   // Everything else requires auth + tenant isolation
   return authMiddleware(req, res, (err?: any) => {
     if (err) return next(err);
