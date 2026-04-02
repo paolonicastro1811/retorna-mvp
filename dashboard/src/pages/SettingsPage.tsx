@@ -130,12 +130,22 @@ export function SettingsPage() {
   const [customLimits, setCustomLimits] = useState<CampaignLimits | null>(null)
   const [customName, setCustomName] = useState('')
   const [customBody, setCustomBody] = useState('')
+  const [bodyWarnings, setBodyWarnings] = useState<string[]>([])
   const [aiReview, setAiReview] = useState<AiReview | null>(null)
   const [reviewing, setReviewing] = useState(false)
   const [savingCustom, setSavingCustom] = useState(false)
   const [submittingMeta, setSubmittingMeta] = useState<string | null>(null)
   const [customError, setCustomError] = useState('')
   const [customSuccess, setCustomSuccess] = useState('')
+
+  // Audience selection for sending approved custom templates
+  const [sendingTemplateId, setSendingTemplateId] = useState<string | null>(null)
+  const [audienceMode, setAudienceMode] = useState<'visits' | 'manual'>('visits')
+  const [minVisitsFilter, setMinVisitsFilter] = useState(5)
+  const [customerList, setCustomerList] = useState<{ id: string; name: string; phone: string; totalVisits: number }[]>([])
+  const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set())
+  const [loadingCustomers, setLoadingCustomers] = useState(false)
+  const [sendingCampaign, setSendingCampaign] = useState(false)
 
   // Plan change
   const [changingPlan, setChangingPlan] = useState(false)
@@ -245,8 +255,31 @@ export function SettingsPage() {
     } catch { /* ignore */ }
   }
 
+  // Validate body before AI review
+  const validateBody = (text: string): string[] => {
+    const warnings: string[] = []
+    if (text.length < 20) warnings.push('Mensagem muito curta (mínimo 20 caracteres)')
+    if (text.length > 1024) warnings.push('Mensagem excede 1024 caracteres')
+    // Check for malformed variables like {customer_name}, {{customer name}}, customer_name without braces
+    const malformed = text.match(/\{(?!\{)\w+(?!\})\}|\{\{\w+\s+\w+\}\}|\bcustomer_name\b(?!\}\})/g)
+    if (malformed) warnings.push('Variável mal formatada. Use exatamente: {{customer_name}}')
+    // Check for unknown variables
+    const vars = text.match(/\{\{(\w+)\}\}/g) || []
+    const invalid = vars.filter(v => v !== '{{customer_name}}')
+    if (invalid.length > 0) warnings.push(`Variáveis inválidas: ${invalid.join(', ')}. Apenas {{customer_name}} é permitida.`)
+    // Check opt-out
+    if (!/SAIR|STOP|PARAR|CANCELAR|não receber/i.test(text)) warnings.push('Falta opção de opt-out (ex: "Responda SAIR para não receber mais"). Obrigatório pela LGPD.')
+    return warnings
+  }
+
   const handleAiReview = async () => {
     if (!customBody.trim()) return
+    const warnings = validateBody(customBody)
+    setBodyWarnings(warnings)
+    // Block if critical errors (not just suggestions)
+    const blocking = warnings.filter(w => w.includes('Variável mal formatada') || w.includes('Variáveis inválidas') || w.includes('muito curta'))
+    if (blocking.length > 0) return
+
     setReviewing(true)
     setAiReview(null)
     setCustomError('')
@@ -260,6 +293,53 @@ export function SettingsPage() {
       setCustomError(err.message)
     } finally {
       setReviewing(false)
+    }
+  }
+
+  // Load customers for audience selection
+  const loadCustomersForAudience = async () => {
+    setLoadingCustomers(true)
+    try {
+      const customers = await api<{ id: string; name: string; phone: string; totalVisits: number; marketingOptInAt: string | null }[]>(
+        `/restaurants/${restaurantId}/customers`
+      )
+      // Only show customers with marketing opt-in
+      setCustomerList(customers.filter(c => c.marketingOptInAt))
+    } catch { /* ignore */ }
+    finally { setLoadingCustomers(false) }
+  }
+
+  const handleOpenAudience = (templateId: string) => {
+    setSendingTemplateId(templateId)
+    setSelectedCustomers(new Set())
+    setAudienceMode('visits')
+    loadCustomersForAudience()
+  }
+
+  const handleSendCampaign = async () => {
+    if (!sendingTemplateId) return
+    const targets = audienceMode === 'visits'
+      ? customerList.filter(c => c.totalVisits >= minVisitsFilter).map(c => c.id)
+      : Array.from(selectedCustomers)
+    if (targets.length === 0) { setCustomError('Nenhum cliente selecionado.'); return }
+
+    setSendingCampaign(true)
+    setCustomError('')
+    try {
+      await api(`/restaurants/${restaurantId}/campaigns`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: `Custom: ${customTemplates.find(t => t.id === sendingTemplateId)?.name || 'Template'}`,
+          templateId: sendingTemplateId,
+          customerIds: targets,
+        }),
+      })
+      setCustomSuccess(`Campanha enviada para ${targets.length} cliente(s)!`)
+      setSendingTemplateId(null)
+    } catch (err: any) {
+      setCustomError(err.message || 'Erro ao enviar campanha')
+    } finally {
+      setSendingCampaign(false)
     }
   }
 
@@ -505,7 +585,7 @@ export function SettingsPage() {
               />
               <textarea
                 value={customBody}
-                onChange={e => setCustomBody(e.target.value)}
+                onChange={e => { setCustomBody(e.target.value); setBodyWarnings([]) }}
                 placeholder="Oi {{customer_name}}! Temos uma novidade especial para você..."
                 rows={3}
                 className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent"
@@ -514,6 +594,13 @@ export function SettingsPage() {
                 <span>{customBody.length}/1024 caracteres</span>
                 <span className="text-gray-400">Use {'{{customer_name}}'} para personalizar</span>
               </div>
+
+              {/* Validation warnings */}
+              {bodyWarnings.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs text-orange-700 space-y-0.5">
+                  {bodyWarnings.map((w, i) => <p key={i}>⚠ {w}</p>)}
+                </div>
+              )}
 
               {/* Preview */}
               {customBody && (
@@ -616,7 +703,12 @@ export function SettingsPage() {
                           <span className="text-xs text-yellow-600">Aguardando aprovação da Meta (até 24h)...</span>
                         )}
                         {t.metaStatus === 'approved' && (
-                          <span className="text-xs text-green-600">Pronto para usar em campanhas!</span>
+                          <button
+                            onClick={() => sendingTemplateId === t.id ? setSendingTemplateId(null) : handleOpenAudience(t.id)}
+                            className="px-2 py-1 text-xs bg-[#25D366] text-white rounded-lg hover:bg-[#1DA851]"
+                          >
+                            {sendingTemplateId === t.id ? 'Fechar' : 'Enviar campanha'}
+                          </button>
                         )}
                         {t.metaStatus === 'rejected' && (
                           <button
@@ -627,6 +719,79 @@ export function SettingsPage() {
                           </button>
                         )}
                       </div>
+
+                      {/* Audience selection panel */}
+                      {sendingTemplateId === t.id && (
+                        <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                          <p className="text-xs font-semibold text-blue-800">Selecionar destinatários</p>
+
+                          {/* Mode toggle */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setAudienceMode('visits')}
+                              className={`px-2 py-1 text-xs rounded-lg ${audienceMode === 'visits' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 border border-blue-300'}`}
+                            >
+                              Por visitas
+                            </button>
+                            <button
+                              onClick={() => setAudienceMode('manual')}
+                              className={`px-2 py-1 text-xs rounded-lg ${audienceMode === 'manual' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 border border-blue-300'}`}
+                            >
+                              Seleção manual
+                            </button>
+                          </div>
+
+                          {loadingCustomers ? (
+                            <p className="text-xs text-gray-500">Carregando clientes...</p>
+                          ) : audienceMode === 'visits' ? (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <label className="text-xs text-gray-600">Mínimo de visitas:</label>
+                                <input
+                                  type="number" min={1} max={100} value={minVisitsFilter}
+                                  onChange={e => setMinVisitsFilter(Math.max(1, parseInt(e.target.value) || 1))}
+                                  className="w-14 border border-gray-200 rounded px-1.5 py-0.5 text-xs text-center bg-white"
+                                />
+                              </div>
+                              <p className="text-xs text-blue-700">
+                                {customerList.filter(c => c.totalVisits >= minVisitsFilter).length} cliente(s) com {minVisitsFilter}+ visitas e opt-in ativo
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                              {customerList.length === 0 ? (
+                                <p className="text-xs text-gray-500">Nenhum cliente com opt-in ativo.</p>
+                              ) : customerList.map(c => (
+                                <label key={c.id} className="flex items-center gap-2 text-xs py-0.5 cursor-pointer hover:bg-blue-100 rounded px-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCustomers.has(c.id)}
+                                    onChange={e => {
+                                      const next = new Set(selectedCustomers)
+                                      e.target.checked ? next.add(c.id) : next.delete(c.id)
+                                      setSelectedCustomers(next)
+                                    }}
+                                    className="accent-[#25D366]"
+                                  />
+                                  <span className="text-gray-800">{c.name || 'Sem nome'}</span>
+                                  <span className="text-gray-400">({c.totalVisits} visitas)</span>
+                                </label>
+                              ))}
+                              {customerList.length > 0 && (
+                                <p className="text-xs text-blue-700 pt-1">{selectedCustomers.size} selecionado(s)</p>
+                              )}
+                            </div>
+                          )}
+
+                          <button
+                            onClick={handleSendCampaign}
+                            disabled={sendingCampaign || (audienceMode === 'manual' && selectedCustomers.size === 0) || (audienceMode === 'visits' && customerList.filter(c => c.totalVisits >= minVisitsFilter).length === 0)}
+                            className="w-full px-3 py-1.5 text-xs bg-[#25D366] text-white rounded-lg hover:bg-[#1DA851] disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                          >
+                            {sendingCampaign ? 'Enviando...' : 'Enviar campanha'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
