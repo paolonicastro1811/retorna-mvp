@@ -10,17 +10,6 @@ interface Restaurant {
   plan: string
   timezone: string
   attributionWindowDays: number
-  tierFrequenteMinVisits: number
-  tierPrataMinVisits: number
-  tierOuroMinVisits: number
-  discountFrequente: number
-  discountPrata: number
-  discountOuro: number
-  streakTargetVisits: number
-  streakWindowDays: number
-  reactivationAfterDays: number
-  surpriseEveryMinVisits: number
-  surpriseEveryMaxVisits: number
   avgMealDurationMinutes: number
 }
 
@@ -45,11 +34,8 @@ const PLANS = [
     features: [
       'Painel de clientes com lifecycle (ativo/em risco/inativo)',
       'Registro manual de visitas com valor gasto',
-      'Programa de fidelidade com 4 niveis (Novo → Ouro)',
       'Mensagens automaticas: boas-vindas, pos-visita, reativacao',
-      'Desconto progressivo por nivel de fidelidade',
-      'Streak de visitas com recompensas',
-      'Surpresas aleatorias para clientes fieis',
+      'Programa de fidelidade automatico por visitas',
       'Conformidade LGPD (exclusao de dados, opt-in)',
       'Templates de mensagens WhatsApp personalizaveis',
     ],
@@ -105,22 +91,6 @@ export function SettingsPage() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
   const [togglingTpl, setTogglingTpl] = useState<string | null>(null)
 
-  // Loyalty config
-  const [loyaltyConfig, setLoyaltyConfig] = useState({
-    tierFrequenteMinVisits: 3,
-    tierPrataMinVisits: 10,
-    tierOuroMinVisits: 25,
-    discountFrequente: 5,
-    discountPrata: 10,
-    discountOuro: 15,
-    streakTargetVisits: 3,
-    streakWindowDays: 7,
-    reactivationAfterDays: 30,
-    surpriseEveryMinVisits: 3,
-    surpriseEveryMaxVisits: 7,
-  })
-  const [savingLoyalty, setSavingLoyalty] = useState(false)
-  const [savedLoyalty, setSavedLoyalty] = useState(false)
 
   // Plan change
   const [changingPlan, setChangingPlan] = useState(false)
@@ -138,20 +108,6 @@ export function SettingsPage() {
       setMealDuration(r.avgMealDurationMinutes ?? 90)
       setHours(h)
       setTemplates(tpls)
-      setLoyaltyConfig({
-        tierFrequenteMinVisits: r.tierFrequenteMinVisits ?? 3,
-        tierPrataMinVisits: r.tierPrataMinVisits ?? 10,
-        tierOuroMinVisits: r.tierOuroMinVisits ?? 25,
-        discountFrequente: r.discountFrequente ?? 5,
-        discountPrata: r.discountPrata ?? 10,
-        discountOuro: r.discountOuro ?? 15,
-        streakTargetVisits: r.streakTargetVisits ?? 3,
-        streakWindowDays: r.streakWindowDays ?? 7,
-        reactivationAfterDays: r.reactivationAfterDays ?? 30,
-        surpriseEveryMinVisits: r.surpriseEveryMinVisits ?? 3,
-        surpriseEveryMaxVisits: r.surpriseEveryMaxVisits ?? 7,
-      })
-
       const hourMap = new Map(h.map(hr => [hr.dayOfWeek, hr]))
       setEditHours(Array.from({ length: 7 }, (_, i) => {
         const hr = hourMap.get(i)
@@ -233,19 +189,6 @@ export function SettingsPage() {
     finally { setTogglingTpl(null) }
   }
 
-  const handleSaveLoyalty = async () => {
-    setSavingLoyalty(true)
-    setSavedLoyalty(false)
-    try {
-      await api(`/restaurants/${restaurantId}`, {
-        method: 'PUT',
-        body: JSON.stringify(loyaltyConfig),
-      })
-      setSavedLoyalty(true)
-    } catch (e) { console.error(e) }
-    finally { setSavingLoyalty(false) }
-  }
-
   const isPlanB = restaurant?.plan === 'automatic'
 
   if (loading) return <div className="text-center py-20 text-gray-400 text-base">Carregando...</div>
@@ -285,87 +228,10 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* ── SECTION 2: Programa de Fidelidade ── */}
+      {/* ── SECTION 2: Mensagens Automaticas ── */}
       <section className="mb-8">
         <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
           <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">2</span>
-          Programa de Fidelidade
-        </h2>
-
-        {/* Tier visualization */}
-        <div className="bg-gray-50 rounded-xl p-4 mb-4">
-          <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Niveis de fidelidade</p>
-          <div className="flex items-end gap-1">
-            {[
-              { tier: 'Novo', emoji: '👤', visits: '0', discount: '0%', color: 'bg-gray-200', active: true },
-              { tier: 'Frequente', emoji: '⭐', visits: String(loyaltyConfig.tierFrequenteMinVisits), discount: `${loyaltyConfig.discountFrequente}%`, color: 'bg-yellow-100', active: true },
-              { tier: 'Prata', emoji: '🥈', visits: String(loyaltyConfig.tierPrataMinVisits), discount: `${loyaltyConfig.discountPrata}%`, color: 'bg-gray-300', active: true },
-              { tier: 'Ouro', emoji: '🥇', visits: String(loyaltyConfig.tierOuroMinVisits), discount: `${loyaltyConfig.discountOuro}%`, color: 'bg-yellow-300', active: true },
-            ].map((t, i) => (
-              <div key={t.tier} className="flex-1 text-center">
-                <div className={`${t.color} rounded-xl p-2 mx-0.5`} style={{ minHeight: `${40 + i * 20}px` }}>
-                  <p className="text-2xl">{t.emoji}</p>
-                  <p className="text-sm font-bold text-gray-800">{t.tier}</p>
-                  <p className="text-sm text-gray-600">{t.visits}+ visitas</p>
-                  <p className="text-sm font-semibold text-[#25D366]">{t.discount} desc.</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Config: tiers */}
-        <div className="bg-gray-50 rounded-xl p-4 mb-4">
-          <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Configurar niveis</p>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Frequente ⭐', visitKey: 'tierFrequenteMinVisits' as const, discountKey: 'discountFrequente' as const },
-              { label: 'Prata 🥈', visitKey: 'tierPrataMinVisits' as const, discountKey: 'discountPrata' as const },
-              { label: 'Ouro 🥇', visitKey: 'tierOuroMinVisits' as const, discountKey: 'discountOuro' as const },
-            ].map(t => (
-              <div key={t.label} className="bg-white rounded-lg p-2.5 border border-gray-200">
-                <p className="text-sm font-semibold text-gray-700 mb-2">{t.label}</p>
-                <label className="text-sm text-gray-500">Visitas minimas</label>
-                <input type="number" min="1" value={loyaltyConfig[t.visitKey]}
-                  onChange={e => setLoyaltyConfig({ ...loyaltyConfig, [t.visitKey]: Math.max(1, parseInt(e.target.value) || 1) })}
-                  className="w-full border border-gray-200 rounded px-2 py-1 text-base mb-1.5 focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
-                <label className="text-sm text-gray-500">Desconto (%)</label>
-                <input type="number" min="0" max="50" value={loyaltyConfig[t.discountKey]}
-                  onChange={e => setLoyaltyConfig({ ...loyaltyConfig, [t.discountKey]: Math.max(0, Math.min(50, parseInt(e.target.value) || 0)) })}
-                  className="w-full border border-gray-200 rounded px-2 py-1 text-base focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
-              </div>
-            ))}
-          </div>
-
-          {/* Extra config */}
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <label className="text-sm text-gray-500">Retorna apos (dias sem visita)</label>
-              <input type="number" min="7" value={loyaltyConfig.reactivationAfterDays}
-                onChange={e => setLoyaltyConfig({ ...loyaltyConfig, reactivationAfterDays: Math.max(7, parseInt(e.target.value) || 30) })}
-                className="w-full border border-gray-200 rounded px-2 py-1 text-base focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Streak: visitas em {loyaltyConfig.streakWindowDays} dias</label>
-              <input type="number" min="2" value={loyaltyConfig.streakTargetVisits}
-                onChange={e => setLoyaltyConfig({ ...loyaltyConfig, streakTargetVisits: Math.max(2, parseInt(e.target.value) || 3) })}
-                className="w-full border border-gray-200 rounded px-2 py-1 text-base focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
-            </div>
-          </div>
-
-          <button onClick={handleSaveLoyalty} disabled={savingLoyalty}
-            className="w-full mt-3 bg-[#25D366] text-white py-2 rounded-lg font-semibold text-base hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
-            {savingLoyalty ? 'Salvando...' : 'Salvar configuracao'}
-          </button>
-          {savedLoyalty && <div className="mt-2 bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-sm">Configuracao salva!</div>}
-        </div>
-
-      </section>
-
-      {/* ── SECTION 3: Mensagens Automaticas ── */}
-      <section className="mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">3</span>
           Mensagens Automaticas
         </h2>
         <div className="bg-gray-50 rounded-xl p-4">
@@ -409,11 +275,11 @@ export function SettingsPage() {
         </div>
       </section>
 
-      {/* ── SECTION 4: Hours (Plan B only) ── */}
+      {/* ── SECTION 3: Hours (Plan B only) ── */}
       {isPlanB && (
         <section className="mb-8">
           <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-            <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">4</span>
+            <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">3</span>
             Horarios
           </h2>
           <div className="bg-gray-50 rounded-xl p-4">
@@ -463,21 +329,21 @@ export function SettingsPage() {
         </section>
       )}
 
-      {/* ── SECTION 5: Table Layout (Plan B only) ── */}
+      {/* ── SECTION 4: Table Layout (Plan B only) ── */}
       {isPlanB && (
         <section className="mb-8">
           <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-            <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">5</span>
+            <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">4</span>
             Mesas e Layout
           </h2>
           <TableMapEditor />
         </section>
       )}
 
-      {/* ── SECTION 6: Plano e Precos ── */}
+      {/* ── SECTION 5: Plano e Precos ── */}
       <section className="mb-8">
         <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">6</span>
+          <span className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center text-white text-sm font-bold">5</span>
           Seu Plano
         </h2>
         <div className="grid grid-cols-2 gap-3">
