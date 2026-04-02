@@ -27,9 +27,9 @@ router.post('/connect', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Facebook App nao configurado no servidor' });
     }
 
-    // 1. Exchange code for token
+    // 1. Exchange code for token (redirect_uri must match the OAuth dialog — empty for JS SDK)
     const tokenRes = await fetch(
-      `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}`
+      `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}&redirect_uri=`
     );
     const tokenData = await tokenRes.json() as any;
 
