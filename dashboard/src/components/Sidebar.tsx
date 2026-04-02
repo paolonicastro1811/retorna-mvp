@@ -154,7 +154,7 @@ export function Sidebar() {
           <Link
             to="/painel/whatsapp"
             onClick={closeMobile}
-            className={`w-full flex items-center gap-2 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors ${
+            className={`w-full flex items-center gap-2 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors ${
               waStatus?.connected
                 ? 'bg-[#25D366]/20 border border-[#25D366]/40 hover:bg-[#25D366]/30'
                 : 'bg-[#25D366] hover:bg-[#1DA851]'
@@ -179,7 +179,7 @@ export function Sidebar() {
               return (
                 <div
                   key={l.to}
-                  className="flex items-center justify-between px-4 py-2 text-xs text-gray-600 cursor-not-allowed"
+                  className="flex items-center justify-between px-4 py-2 text-sm text-gray-600 cursor-not-allowed"
                   title="Disponivel no Plano Automatico"
                 >
                   <span>{l.label}</span>
@@ -195,7 +195,7 @@ export function Sidebar() {
                 end={l.to === '/painel'}
                 onClick={closeMobile}
                 className={({ isActive }) =>
-                  `block px-4 py-2 text-xs transition-colors ${
+                  `block px-4 py-2 text-sm transition-colors ${
                     isActive
                       ? 'bg-[#25D366] text-white font-semibold'
                       : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -214,7 +214,7 @@ export function Sidebar() {
             to="/painel/configuracoes"
             onClick={closeMobile}
             className={({ isActive }) =>
-              `flex items-center gap-2 px-3 py-2 text-xs rounded-lg transition-colors ${
+              `flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
                 isActive
                   ? 'bg-white/10 text-white font-semibold'
                   : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -229,13 +229,13 @@ export function Sidebar() {
           {/* User info + logout */}
           <div className="pt-2 border-t border-white/5">
             {user && (
-              <p className="px-3 text-[10px] text-gray-500 truncate mb-1.5" title={user.email}>
+              <p className="px-3 text-xs text-gray-500 truncate mb-1.5" title={user.email}>
                 {user.email}
               </p>
             )}
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:bg-white/5 hover:text-white rounded-lg transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:bg-white/5 hover:text-white rounded-lg transition-colors"
               aria-label="Sair da conta"
             >
               <LogoutIcon />

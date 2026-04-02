@@ -6,7 +6,7 @@ const LIFECYCLE: Record<string, { label: string; cls: string }> = {
 export function StatusBadge({ status }: { status: string }) {
   const entry = LIFECYCLE[status] ?? { label: status, cls: 'bg-gray-100 text-gray-700' }
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${entry.cls}`}>
+    <span className={`inline-block px-2 py-0.5 rounded-full text-sm font-semibold ${entry.cls}`}>
       {entry.label}
     </span>
   )
