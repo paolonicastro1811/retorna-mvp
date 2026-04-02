@@ -15,8 +15,31 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-[#2d2d3a]" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
 
+      {/* NAVBAR */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+        <div className="max-w-[1320px] mx-auto px-8 py-3 flex items-center justify-between">
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-xl font-extrabold text-[#1a1a2e] bg-transparent border-none cursor-pointer">
+            Retorna
+          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/login')}
+              className="text-sm font-semibold text-[#2d2d3a] hover:text-[#1a1a2e] bg-transparent border-none cursor-pointer"
+            >
+              Entrar
+            </button>
+            <button
+              onClick={() => navigate('/comecar')}
+              className="text-sm font-bold text-white bg-[#25D366] px-5 py-2 rounded-full hover:bg-[#1DA851] transition-colors cursor-pointer border-none"
+            >
+              Começar grátis
+            </button>
+          </div>
+        </div>
+      </nav>
+
       {/* HERO */}
-      <section className="relative min-h-[80vh] flex items-center justify-center text-center overflow-hidden">
+      <section className="relative min-h-[80vh] flex items-center justify-center text-center overflow-hidden pt-14">
         <div className="absolute inset-0 bg-[url('/images/hero.webp')] bg-center bg-cover" />
         <div className="absolute inset-0 bg-black/45" />
         <div className="relative z-10 max-w-[1000px] mx-auto px-8 py-16">
