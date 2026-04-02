@@ -90,9 +90,15 @@ export function Sidebar() {
   }, [restaurantId])
 
   useEffect(() => {
-    api<WhatsAppStatus>('/whatsapp/status')
-      .then(setWaStatus)
-      .catch(() => { /* WhatsApp status not available yet */ })
+    const fetchWaStatus = () => {
+      api<WhatsAppStatus>('/whatsapp/status')
+        .then(setWaStatus)
+        .catch(() => { /* WhatsApp status not available yet */ })
+    }
+    fetchWaStatus()
+    // Re-fetch when WhatsApp connection changes
+    window.addEventListener('whatsapp-status-changed', fetchWaStatus)
+    return () => window.removeEventListener('whatsapp-status-changed', fetchWaStatus)
   }, [])
 
   const handleLogout = () => {

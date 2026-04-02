@@ -133,6 +133,7 @@ export default function WhatsAppConnectPage() {
                   phoneNumber: result.phoneNumber,
                   connectedAt: result.connectedAt,
                 })
+                window.dispatchEvent(new Event('whatsapp-status-changed'))
               })
               .catch((err) => {
                 console.error('[WA Connect] Error:', err)
@@ -165,6 +166,7 @@ export default function WhatsAppConnectPage() {
     try {
       await api('/whatsapp/disconnect', { method: 'POST' })
       setStatus({ connected: false })
+      window.dispatchEvent(new Event('whatsapp-status-changed'))
     } catch {
       setError('Erro ao desconectar. Tente novamente.')
     }
