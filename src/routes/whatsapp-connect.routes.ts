@@ -27,10 +27,23 @@ router.post('/connect', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Facebook App nao configurado no servidor' });
     }
 
-    // 1. Exchange code for token (redirect_uri must match the OAuth dialog — empty for JS SDK)
-    const tokenRes = await fetch(
-      `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}&redirect_uri=`
-    );
+    // 1. Exchange code for token
+    // Try multiple redirect_uri values — Meta requires it to match the OAuth dialog
+    const redirectUris = [
+      '',                                          // empty (JS SDK default)
+      'https://retornabrasil.com/painel/whatsapp', // page URL
+      'https://www.facebook.com/connect/login_success.html', // FB SDK internal
+    ];
+
+    let tokenData: any = null;
+    for (const redirectUri of redirectUris) {
+      const url = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&code=${code}` +
+        (redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : '');
+      const tokenRes = await fetch(url);
+      tokenData = await tokenRes.json();
+      console.log(`[WhatsApp Connect] Token exchange (redirect_uri=${redirectUri || 'none'}):`, JSON.stringify(tokenData).slice(0, 200));
+      if (!tokenData.error) break;
+    }
     const tokenData = await tokenRes.json() as any;
 
     if (tokenData.error) {
