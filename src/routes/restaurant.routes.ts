@@ -82,6 +82,17 @@ router.post("/", validate(createRestaurantSchema), async (req: Request, res: Res
     subscriptionStatus: 'trialing',
   });
 
+  // Create default operating hours for all 7 days
+  // Brazilian convention: Monday (dayOfWeek=1) closed, rest open 11:00-23:00
+  const defaultHours = Array.from({ length: 7 }, (_, dayOfWeek) => ({
+    restaurantId: restaurant.id,
+    dayOfWeek,
+    openTime: "11:00",
+    closeTime: "23:00",
+    isClosed: dayOfWeek === 1, // Monday closed
+  }));
+  await prisma.restaurantHours.createMany({ data: defaultHours });
+
   // Create owner user + JWT if email provided (onboarding flow)
   let user = null;
   let token = null;

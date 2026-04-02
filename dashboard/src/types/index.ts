@@ -60,7 +60,7 @@ export interface LiveReservation {
   customerName: string | null
   phone: string
   time: string
-  guests: number
+  partySize: number
   status: string
   table: { tableNumber: number; label: string | null; seats: number } | null
 }

@@ -7,12 +7,28 @@ const router = Router();
 const VALID_STATUSES = ["pending", "confirmed", "seated", "completed", "cancelled", "no_show"];
 const VALID_SOURCES = ["manual", "whatsapp_bot", "phone"];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DEFAULT_DURATION_MIN = 90; // 1.5 hours assumed if no endTime
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
 
 function addMinutes(time: string, mins: number): string {
-  const [h, m] = time.split(":").map(Number);
-  const total = h * 60 + m + mins;
+  const total = timeToMinutes(time) + mins;
   return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Get the day-of-week for a date string in a given IANA timezone.
+ * Uses Intl to derive the local weekday (0=Sunday).
+ */
+function getDayOfWeekInTimezone(dateStr: string, timezone: string): number {
+  // Parse as local date in the given timezone
+  const d = new Date(dateStr + "T12:00:00"); // noon to avoid DST edge cases
+  const formatter = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: timezone });
+  const dayName = formatter.format(d);
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[dayName] ?? d.getDay();
 }
 
 // GET /:restaurantId/reservations?date=2026-03-30
@@ -40,10 +56,11 @@ router.get("/:restaurantId/reservations", async (req: Request, res: Response) =>
 
     const where: any = { restaurantId };
     if (dateStr) {
-      const d = new Date(dateStr + "T00:00:00Z");
+      // Parse without "Z" — treat as local time (server / restaurant timezone)
+      const d = new Date(dateStr + "T00:00:00");
       if (isNaN(d.getTime())) return res.status(400).json({ error: "Invalid date" });
       const next = new Date(d);
-      next.setUTCDate(next.getUTCDate() + 1);
+      next.setDate(next.getDate() + 1);
       where.date = { gte: d, lt: next };
     }
 
@@ -73,8 +90,42 @@ router.post("/:restaurantId/reservations", async (req: Request, res: Response) =
     if (status && !VALID_STATUSES.includes(status)) return res.status(400).json({ error: `Invalid status. Must be: ${VALID_STATUSES.join(", ")}` });
     if (source && !VALID_SOURCES.includes(source)) return res.status(400).json({ error: `Invalid source. Must be: ${VALID_SOURCES.join(", ")}` });
 
-    const parsedDate = new Date(date + "T00:00:00Z");
+    // FIX 10: Validate endTime is after start time
+    if (endTime && timeToMinutes(endTime) <= timeToMinutes(time)) {
+      return res.status(400).json({ error: "endTime must be after start time" });
+    }
+
+    // Parse date without "Z" — treat as local time (restaurant timezone)
+    const parsedDate = new Date(date + "T00:00:00");
     if (isNaN(parsedDate.getTime())) return res.status(400).json({ error: "Invalid date" });
+
+    // Fetch restaurant for timezone and avgMealDurationMinutes
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { timezone: true, avgMealDurationMinutes: true },
+    });
+    if (!restaurant) return res.status(404).json({ error: "Restaurant not found" });
+
+    const mealDuration = restaurant.avgMealDurationMinutes ?? 90;
+
+    // FIX 1: Validate operating hours
+    const dayOfWeek = getDayOfWeekInTimezone(date, restaurant.timezone);
+    const hours = await prisma.restaurantHours.findUnique({
+      where: { restaurantId_dayOfWeek: { restaurantId, dayOfWeek } },
+    });
+
+    if (hours?.isClosed) {
+      return res.status(400).json({ error: "Restaurante fechado neste dia" });
+    }
+
+    if (hours) {
+      const bookMin = timeToMinutes(time);
+      const openMin = timeToMinutes(hours.openTime);
+      const closeMin = timeToMinutes(hours.closeTime);
+      if (bookMin < openMin || bookMin >= closeMin) {
+        return res.status(400).json({ error: "Horário fora do funcionamento" });
+      }
+    }
 
     const safePartySize = Math.max(1, Math.min(50, parseInt(partySize) || 2));
 
@@ -84,6 +135,36 @@ router.post("/:restaurantId/reservations", async (req: Request, res: Response) =
         where: { id: tableId, restaurantId, isActive: true },
       });
       if (!table) return res.status(400).json({ error: "Table not found or inactive" });
+
+      // FIX 2: Validate table seats >= partySize
+      if (table.seats < safePartySize) {
+        return res.status(400).json({ error: `Mesa comporta apenas ${table.seats} pessoas` });
+      }
+
+      // FIX 2: Check for table conflicts (overlapping reservations)
+      const effectiveEndTime = endTime || addMinutes(time, mealDuration);
+      const newStart = timeToMinutes(time);
+      const newEnd = timeToMinutes(effectiveEndTime);
+
+      const nextDay = new Date(parsedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const existingOnTable = await prisma.reservation.findMany({
+        where: {
+          restaurantId,
+          tableId,
+          date: { gte: parsedDate, lt: nextDay },
+          status: { notIn: ["cancelled", "no_show", "completed"] },
+        },
+      });
+
+      for (const r of existingOnTable) {
+        const rStart = timeToMinutes(r.time);
+        const rEnd = r.endTime ? timeToMinutes(r.endTime) : rStart + mealDuration;
+        if (newStart < rEnd && newEnd > rStart) {
+          return res.status(409).json({ error: "Mesa já reservada neste horário" });
+        }
+      }
     }
 
     const reservation = await prisma.reservation.create({
@@ -146,7 +227,7 @@ router.patch("/:restaurantId/reservations/:reservationId", async (req: Request, 
     if (notes !== undefined) data.notes = notes;
     if (customerName !== undefined) data.customerName = customerName;
     if (date !== undefined) {
-      const parsedDate = new Date(date + "T00:00:00Z");
+      const parsedDate = new Date(date + "T00:00:00");
       if (isNaN(parsedDate.getTime())) return res.status(400).json({ error: "Invalid date" });
       data.date = parsedDate;
     }
@@ -203,9 +284,19 @@ router.get("/:restaurantId/reservations/availability", async (req: Request, res:
 
     if (!dateStr) return res.status(400).json({ error: "date is required" });
 
-    const d = new Date(dateStr + "T00:00:00Z");
+    // Parse without "Z" — treat as local time (restaurant timezone)
+    const d = new Date(dateStr + "T00:00:00");
     if (isNaN(d.getTime())) return res.status(400).json({ error: "Invalid date" });
-    const dayOfWeek = d.getUTCDay();
+
+    // Fetch restaurant for timezone and meal duration
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { timezone: true, avgMealDurationMinutes: true },
+    });
+    const mealDuration = restaurant?.avgMealDurationMinutes ?? 90;
+
+    // Use restaurant timezone for day-of-week calculation
+    const dayOfWeek = getDayOfWeekInTimezone(dateStr, restaurant?.timezone ?? "America/Sao_Paulo");
 
     const hours = await prisma.restaurantHours.findUnique({
       where: { restaurantId_dayOfWeek: { restaurantId, dayOfWeek } },
@@ -221,7 +312,7 @@ router.get("/:restaurantId/reservations/availability", async (req: Request, res:
     });
 
     const next = new Date(d);
-    next.setUTCDate(next.getUTCDate() + 1);
+    next.setDate(next.getDate() + 1);
     const existing = await prisma.reservation.findMany({
       where: {
         restaurantId,
@@ -231,17 +322,19 @@ router.get("/:restaurantId/reservations/availability", async (req: Request, res:
     });
 
     const slots: { time: string; available: number; total: number }[] = [];
-    const [openH, openM] = hours.openTime.split(":").map(Number);
-    const [closeH, closeM] = hours.closeTime.split(":").map(Number);
-    let h = openH, m = openM;
+    const openMin = timeToMinutes(hours.openTime);
+    const closeMin = timeToMinutes(hours.closeTime);
 
-    while (h < closeH || (h === closeH && m < closeM)) {
-      const timeStr = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    for (let min = openMin; min < closeMin; min += 30) {
+      const timeStr = `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+      const slotStart = min;
+      const slotEnd = min + mealDuration; // full meal duration overlap check
 
-      // Count occupied tables (assigned) + unassigned reservations in this slot
+      // Count occupied tables (assigned) + unassigned reservations overlapping this slot
       const overlapping = existing.filter((r) => {
-        const effectiveEnd = r.endTime || addMinutes(r.time, DEFAULT_DURATION_MIN);
-        return r.time <= timeStr && effectiveEnd > timeStr;
+        const rStart = timeToMinutes(r.time);
+        const rEnd = r.endTime ? timeToMinutes(r.endTime) : rStart + mealDuration;
+        return rStart < slotEnd && rEnd > slotStart;
       });
 
       const occupiedTableIds = overlapping.filter(r => r.tableId).map(r => r.tableId);
@@ -250,8 +343,6 @@ router.get("/:restaurantId/reservations/availability", async (req: Request, res:
       const available = Math.max(0, availableFromTables - unassignedCount);
 
       slots.push({ time: timeStr, available, total: tables.length });
-      m += 30;
-      if (m >= 60) { h++; m -= 60; }
     }
 
     res.json({ closed: false, slots });

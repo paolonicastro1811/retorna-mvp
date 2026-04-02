@@ -6,8 +6,23 @@
 import { prisma } from "../database/client";
 import { BookingState } from "./intent/intent.types";
 
-const DEFAULT_DURATION_MIN = 90;
 const DAY_NAMES_PT = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/**
+ * Get the day-of-week for a date string in a given IANA timezone.
+ */
+function getDayOfWeekInTimezone(dateStr: string, timezone: string): number {
+  const d = new Date(dateStr + "T12:00:00");
+  const formatter = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: timezone });
+  const dayName = formatter.format(d);
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[dayName] ?? d.getDay();
+}
 
 export interface AvailabilitySlot {
   time: string;
@@ -82,8 +97,17 @@ export const bookingService = {
     dateStr: string,
     partySize: number = 2
   ): Promise<AvailabilityResult> {
-    const date = new Date(dateStr + "T00:00:00Z");
-    const dayOfWeek = date.getDay();
+    // Fetch restaurant for timezone and meal duration
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { timezone: true, avgMealDurationMinutes: true },
+    });
+    const timezone = restaurant?.timezone ?? "America/Sao_Paulo";
+    const mealDuration = restaurant?.avgMealDurationMinutes ?? 90;
+
+    // Parse without "Z" — treat as local time
+    const date = new Date(dateStr + "T00:00:00");
+    const dayOfWeek = getDayOfWeekInTimezone(dateStr, timezone);
     const dayName = DAY_NAMES_PT[dayOfWeek];
 
     const hours = await prisma.restaurantHours.findUnique({
@@ -101,35 +125,31 @@ export const bookingService = {
     const totalTables = tables.length;
 
     // Get existing reservations for that date
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
     const reservations = await prisma.reservation.findMany({
       where: {
         restaurantId,
-        date,
-        status: { notIn: ["cancelled", "completed"] },
+        date: { gte: date, lt: nextDay },
+        status: { notIn: ["cancelled", "completed", "no_show"] },
       },
     });
 
-    // Generate 30-min slots
+    // Generate 30-min slots with full duration overlap check
     const slots: AvailabilitySlot[] = [];
-    const [openH, openM] = hours.openTime.split(":").map(Number);
-    const [closeH, closeM] = hours.closeTime.split(":").map(Number);
-    const openMin = openH * 60 + openM;
-    const closeMin = closeH * 60 + closeM;
+    const openMin = timeToMinutes(hours.openTime);
+    const closeMin = timeToMinutes(hours.closeTime);
 
     for (let min = openMin; min < closeMin; min += 30) {
       const slotTime = `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
       const slotStart = min;
-      const slotEnd = min + 30;
+      const slotEnd = min + mealDuration;
 
-      // Count reservations overlapping this slot
+      // Count reservations overlapping this slot (full duration)
       let occupied = 0;
       for (const r of reservations) {
-        const [rH, rM] = r.time.split(":").map(Number);
-        const rStart = rH * 60 + rM;
-        const rEndTime = r.endTime ? r.endTime.split(":").map(Number) : null;
-        const rEnd = rEndTime
-          ? rEndTime[0] * 60 + rEndTime[1]
-          : rStart + DEFAULT_DURATION_MIN;
+        const rStart = timeToMinutes(r.time);
+        const rEnd = r.endTime ? timeToMinutes(r.endTime) : rStart + mealDuration;
 
         if (rStart < slotEnd && rEnd > slotStart) {
           occupied++;
@@ -199,8 +219,16 @@ export const bookingService = {
       return { success: false, error: "Horário inválido" };
     }
 
+    // Fetch restaurant for timezone and meal duration
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { timezone: true, avgMealDurationMinutes: true },
+    });
+    const timezone = restaurant?.timezone ?? "America/Sao_Paulo";
+    const mealDuration = restaurant?.avgMealDurationMinutes ?? 90;
+
     // Check restaurant is open
-    const dayOfWeek = date.getDay();
+    const dayOfWeek = getDayOfWeekInTimezone(booking.date, timezone);
     const hours = await prisma.restaurantHours.findUnique({
       where: { restaurantId_dayOfWeek: { restaurantId, dayOfWeek } },
     });
@@ -237,19 +265,29 @@ export const bookingService = {
       orderBy: { seats: "asc" }, // smallest suitable table
     });
 
-    // Find a table not already booked at this time
+    // Find a table not already booked at this time (full duration overlap check)
+    const newStart = timeToMinutes(booking.time);
+    const newEnd = newStart + mealDuration;
     let assignedTableId: string | null = null;
+
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+
     for (const table of tables) {
-      const conflict = await prisma.reservation.findFirst({
+      const existingOnTable = await prisma.reservation.findMany({
         where: {
           restaurantId,
           tableId: table.id,
-          date,
-          status: { notIn: ["cancelled", "completed"] },
-          time: booking.time,
+          date: { gte: date, lt: nextDay },
+          status: { notIn: ["cancelled", "completed", "no_show"] },
         },
       });
-      if (!conflict) {
+      const hasConflict = existingOnTable.some((r) => {
+        const rStart = timeToMinutes(r.time);
+        const rEnd = r.endTime ? timeToMinutes(r.endTime) : rStart + mealDuration;
+        return newStart < rEnd && newEnd > rStart;
+      });
+      if (!hasConflict) {
         assignedTableId = table.id;
         break;
       }
@@ -268,7 +306,7 @@ export const bookingService = {
         date,
         time: booking.time,
         partySize,
-        status: "confirmed", // Bot-created = auto-confirmed
+        status: "pending", // Bot-created = pending until restaurant confirms
         source: "whatsapp_bot",
         tableId: assignedTableId,
         notes: "Reserva criada automaticamente via WhatsApp bot",

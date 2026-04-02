@@ -142,7 +142,7 @@ export function SalaAoVivoPage() {
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-base text-gray-500">
-                      {r.guests}p
+                      {r.partySize}p
                     </span>
                     {r.table && (
                       <span className="text-base text-gray-500">
