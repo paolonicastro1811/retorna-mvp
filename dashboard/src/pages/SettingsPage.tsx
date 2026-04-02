@@ -25,13 +25,13 @@ interface MessageTemplate {
 const DAY_NAMES = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado']
 
 // Template display order (chronological: first received → last) and short descriptions
-const TEMPLATE_ORDER: Record<string, { order: number; desc: string }> = {
-  'Pos-visita + Consentimento': { order: 1, desc: '24h apos visita, pede opt-in' },
-  'Metade do caminho': { order: 2, desc: 'Ao completar 5 visitas' },
-  'Recompensa 10 visitas': { order: 3, desc: '10% desconto ao completar 10 visitas' },
-  'Desconto surpresa': { order: 4, desc: 'Desconto aleatorio para fieis' },
-  'Cliente VIP — 20% desconto': { order: 5, desc: 'A cada 20 visitas: 20% desconto' },
-  'Reativacao': { order: 6, desc: 'Clientes inativos ha 30+ dias' },
+const TEMPLATE_ORDER: Record<string, { order: number; desc: string; previewVisits: string }> = {
+  'Pos-visita + Consentimento': { order: 1, desc: '24h apos visita, pede opt-in', previewVisits: '1' },
+  'Metade do caminho': { order: 2, desc: 'Ao completar 5 visitas', previewVisits: '5' },
+  'Recompensa 10 visitas': { order: 3, desc: '10% desconto ao completar 10 visitas', previewVisits: '10' },
+  'Desconto surpresa': { order: 4, desc: 'Desconto aleatorio para fieis', previewVisits: '8' },
+  'Cliente VIP — 20% desconto': { order: 5, desc: 'A cada 20 visitas: 20% desconto', previewVisits: '20' },
+  'Reativacao': { order: 6, desc: 'Com opt-in, sem visita ha 30+ dias', previewVisits: '12' },
 }
 
 const PLANS = [
@@ -271,7 +271,7 @@ export function SettingsPage() {
                   <div className="mt-1.5 bg-[#DCF8C6] rounded-lg rounded-tl-none p-2 text-xs text-gray-800 leading-relaxed whitespace-pre-wrap max-w-[85%]">
                     {tpl.body
                       .replace(/\{\{(?:nome?|customer_name|1)\}\}/gi, 'Maria')
-                      .replace(/\{\{(?:visitas?|visit_count|2)\}\}/gi, '5')
+                      .replace(/\{\{(?:visitas?|visit_count|2)\}\}/gi, meta?.previewVisits ?? '5')
                       .replace(/\{\{(?:desconto|discount|3)\}\}/gi, '10')
                       .replace(/\{\{progresso_tier\}\}/gi, 'Faltam 5 visitas para Prata 🥈')
                       .replace(/\{\{tier_emoji\}\}/gi, '🥈')
