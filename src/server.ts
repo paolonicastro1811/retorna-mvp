@@ -209,6 +209,58 @@ cron.schedule("*/15 * * * *", async () => {
   }
 });
 
+// WhatsApp token auto-refresh: every day at 3:00 AM
+// Refreshes tokens that expire within 7 days → effectively permanent
+cron.schedule("0 3 * * *", async () => {
+  try {
+    const FB_APP_ID = process.env.FB_APP_ID;
+    const FB_APP_SECRET = process.env.FB_APP_SECRET;
+    if (!FB_APP_ID || !FB_APP_SECRET) return;
+
+    // Find restaurants with tokens expiring within 7 days
+    const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const restaurants = await prisma.restaurant.findMany({
+      where: {
+        waAccessToken: { not: null },
+        waTokenExpiresAt: { not: null, lte: sevenDaysFromNow },
+      },
+      select: { id: true, waAccessToken: true, name: true },
+    });
+
+    if (restaurants.length === 0) return;
+    console.log(`[Cron:WaTokenRefresh] ${restaurants.length} token(s) expiring soon, refreshing...`);
+
+    let refreshed = 0;
+    for (const r of restaurants) {
+      try {
+        const url = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FB_APP_ID}&client_secret=${FB_APP_SECRET}&fb_exchange_token=${r.waAccessToken}`;
+        const res = await fetch(url);
+        const data = await res.json() as any;
+
+        if (data.access_token) {
+          const expiresInMs = (data.expires_in || 5184000) * 1000;
+          await prisma.restaurant.update({
+            where: { id: r.id },
+            data: {
+              waAccessToken: data.access_token,
+              waTokenExpiresAt: new Date(Date.now() + expiresInMs),
+            },
+          });
+          refreshed++;
+          console.log(`[Cron:WaTokenRefresh] Refreshed token for "${r.name}" (expires in ${Math.round(expiresInMs / 86400000)}d)`);
+        } else {
+          console.error(`[Cron:WaTokenRefresh] Failed for "${r.name}":`, data.error?.message);
+        }
+      } catch (err) {
+        console.error(`[Cron:WaTokenRefresh] Error for "${r.name}":`, err);
+      }
+    }
+    console.log(`[Cron:WaTokenRefresh] Done: ${refreshed}/${restaurants.length} refreshed`);
+  } catch (err) {
+    console.error("[Cron:WaTokenRefresh] Error:", err);
+  }
+});
+
 // Loyalty automation: todo dia as 10:00 (horario do restaurante)
 cron.schedule("0 10 * * *", async () => {
   try {
