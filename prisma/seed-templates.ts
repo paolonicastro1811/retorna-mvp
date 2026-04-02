@@ -22,9 +22,9 @@ const LOYALTY_TEMPLATES = [
     isActive: true,
   },
   {
-    name: "Recompensa por visitas",
+    name: "Recompensa 10 visitas",
     templateKey: "reward_earned",
-    body: "Oi {{customer_name}}! 🎁 Parabens! Voce completou {{visit_count}} visitas e ganhou uma recompensa especial. Mostre essa mensagem no caixa na sua proxima visita.\n\nResponda *SAIR* se nao deseja mais receber nossas mensagens.",
+    body: "Oi {{customer_name}}, parabens! 🎉 Voce completou 10 visitas conosco!\n\nComo agradecimento, voce ganhou 10% de desconto na sua proxima visita. Mostre esta mensagem ao garcom para resgatar. Valido por 7 dias.\n\nObrigado pela fidelidade! 🍽️\n\nResponda SAIR se nao deseja mais receber nossas mensagens.",
     hsmTemplateName: "reward_earned_v1",
     hsmLanguage: "pt_BR",
     isActive: true,

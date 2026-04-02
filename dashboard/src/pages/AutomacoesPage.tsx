@@ -37,7 +37,7 @@ interface AutomationStats {
 // Only the 6 templates that exist on Meta
 const TEMPLATE_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
   post_visit_thanks: { label: 'Pos-visita + Consentimento', emoji: '📩', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  reward_earned: { label: 'Recompensa por visitas', emoji: '🎁', color: 'bg-pink-50 text-pink-700 border-pink-200' },
+  reward_earned: { label: 'Recompensa 10 visitas', emoji: '🎁', color: 'bg-pink-50 text-pink-700 border-pink-200' },
   surprise_discount: { label: 'Desconto surpresa', emoji: '🎉', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
   milestone_halfway: { label: 'Metade do caminho', emoji: '🔥', color: 'bg-orange-50 text-orange-700 border-orange-200' },
   reactivation: { label: 'Reativacao', emoji: '💚', color: 'bg-green-50 text-green-700 border-green-200' },

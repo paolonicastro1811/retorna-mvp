@@ -28,7 +28,7 @@ const DAY_NAMES = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', '
 const TEMPLATE_ORDER: Record<string, { order: number; desc: string }> = {
   'Pos-visita + Consentimento': { order: 1, desc: '24h apos visita, pede opt-in' },
   'Metade do caminho': { order: 2, desc: 'Ao completar 5 visitas' },
-  'Recompensa por visitas': { order: 3, desc: 'Premio ao atingir marco de visitas' },
+  'Recompensa 10 visitas': { order: 3, desc: '10% desconto ao completar 10 visitas' },
   'Desconto surpresa': { order: 4, desc: 'Desconto aleatorio para fieis' },
   'Cliente VIP — 20% desconto': { order: 5, desc: 'A cada 20 visitas: 20% desconto' },
   'Reativacao': { order: 6, desc: 'Clientes inativos ha 30+ dias' },

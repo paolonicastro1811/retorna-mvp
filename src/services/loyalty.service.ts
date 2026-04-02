@@ -122,11 +122,11 @@ export async function onVisitRegistered(customerId: string) {
     }, waCredentials);
   }
 
-  // 5c. Reward earned — at milestone visit counts (10, 15, etc.)
-  const rewardMilestones = [10, 15, 25, 30, 35, 45, 50];
-  if (rewardMilestones.includes(currentVisits) && templateMap.has("reward_earned_v1")) {
+  // 5c. Reward earned — 10% discount at exactly 10 visits
+  if (currentVisits === 10 && templateMap.has("reward_earned_v1")) {
     await sendAndLog(r.id, customerId, phone, "reward_earned", [name, String(currentVisits)], {
       visits: currentVisits,
+      discount: 10,
     }, waCredentials);
   }
 
