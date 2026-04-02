@@ -24,6 +24,20 @@ interface MessageTemplate {
 
 const DAY_NAMES = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado']
 
+// Template display order (chronological: first received → last) and short descriptions
+const TEMPLATE_ORDER: Record<string, { order: number; desc: string }> = {
+  'Boas-vindas + Consentimento': { order: 1, desc: 'Primeiro contato + pedido de opt-in' },
+  'Pos-visita + Consentimento': { order: 2, desc: '24h apos visita, pede opt-in' },
+  'Obrigado pela visita': { order: 3, desc: 'Agradecimento apos cada visita' },
+  'Metade do caminho': { order: 4, desc: 'Ao completar 5 visitas' },
+  'Lembrete de sequencia': { order: 5, desc: 'Incentivo para manter streak' },
+  'Upgrade de nivel': { order: 6, desc: 'Quando sobe de tier' },
+  'Recompensa surpresa': { order: 7, desc: 'Surpresa aleatoria para fieis' },
+  'Desconto surpresa': { order: 8, desc: 'Desconto aleatorio para fieis' },
+  'Super fidelidade 20': { order: 9, desc: 'A cada 20 visitas: 20% desconto' },
+  'Retorna': { order: 10, desc: 'Reativacao de clientes inativos' },
+}
+
 const PLANS = [
   {
     key: 'manual',
@@ -237,14 +251,17 @@ export function SettingsPage() {
         <div className="bg-gray-50 rounded-xl p-4">
           <p className="text-sm text-gray-400 mb-3">Ative ou desative as mensagens que o sistema envia automaticamente via WhatsApp.</p>
           <div className="space-y-2">
-            {templates.map(tpl => (
+            {[...templates].sort((a, b) => (TEMPLATE_ORDER[a.name]?.order ?? 99) - (TEMPLATE_ORDER[b.name]?.order ?? 99)).map(tpl => {
+              const meta = TEMPLATE_ORDER[tpl.name]
+              return (
               <div key={tpl.id} className={`border rounded-lg p-2 transition-all ${tpl.isActive ? 'border-[#25D366] bg-white' : 'border-gray-200 bg-gray-100/50'}`}>
                 <div className="flex items-center justify-between">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <span className={`text-sm font-semibold ${tpl.isActive ? 'text-gray-900' : 'text-gray-400'}`}>{tpl.name}</span>
                     <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${tpl.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
                       {tpl.isActive ? 'Ativo' : 'Inativo'}
                     </span>
+                    {meta && <p className="text-xs text-gray-400 mt-0.5">{meta.desc}</p>}
                   </div>
                   <button
                     onClick={() => handleToggleTemplate(tpl.id, tpl.isActive)}
@@ -257,20 +274,22 @@ export function SettingsPage() {
                 {tpl.isActive && (
                   <div className="mt-1.5 bg-[#DCF8C6] rounded-lg rounded-tl-none p-2 text-xs text-gray-800 leading-relaxed whitespace-pre-wrap max-w-[85%]">
                     {tpl.body
-                      .replace(/\{\{nome?\}\}/gi, 'Maria')
-                      .replace(/\{\{visitas?\}\}/gi, '5')
-                      .replace(/\{\{desconto\}\}/gi, '10')
+                      .replace(/\{\{(?:nome?|customer_name|1)\}\}/gi, 'Maria')
+                      .replace(/\{\{(?:visitas?|visit_count|2)\}\}/gi, '5')
+                      .replace(/\{\{(?:desconto|discount|3)\}\}/gi, '10')
                       .replace(/\{\{progresso_tier\}\}/gi, 'Faltam 5 visitas para Prata 🥈')
                       .replace(/\{\{tier_emoji\}\}/gi, '🥈')
                       .replace(/\{\{tier_nome\}\}/gi, 'Prata')
                       .replace(/\{\{beneficios\}\}/gi, '10% de desconto + prioridade nas reservas')
                       .replace(/\{\{streak\}\}/gi, '2')
                       .replace(/\{\{faltam\}\}/gi, '1')
-                      .replace(/\{\{prazo\}\}/gi, 'domingo')}
+                      .replace(/\{\{prazo\}\}/gi, 'domingo')
+                      .replace(/\{\{restaurant_name\}\}/gi, 'Pizzaria Bella Napoli')}
                   </div>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
