@@ -68,8 +68,7 @@ router.get("/:restaurantId/reservations", async (req: Request, res: Response) =>
       // Parse as UTC midnight — @db.Date fields are stored date-only (no timezone)
       const d = new Date(dateStr + "T00:00:00Z");
       if (isNaN(d.getTime())) return res.status(400).json({ error: "Invalid date" });
-      const next = new Date(d);
-      next.setDate(next.getDate() + 1);
+      const next = new Date(d.getTime() + 86400000); // +24h (safe for UTC dates)
       where.date = { gte: d, lt: next };
     }
 
@@ -155,8 +154,7 @@ router.post("/:restaurantId/reservations", async (req: Request, res: Response) =
       const newStart = timeToMinutes(time);
       const newEnd = timeToMinutes(effectiveEndTime);
 
-      const nextDay = new Date(parsedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      const nextDay = new Date(parsedDate.getTime() + 86400000);
 
       const existingOnTable = await prisma.reservation.findMany({
         where: {
@@ -320,8 +318,7 @@ router.get("/:restaurantId/reservations/availability", async (req: Request, res:
       orderBy: { seats: "asc" },
     });
 
-    const next = new Date(d);
-    next.setDate(next.getDate() + 1);
+    const next = new Date(d.getTime() + 86400000);
     const existing = await prisma.reservation.findMany({
       where: {
         restaurantId,

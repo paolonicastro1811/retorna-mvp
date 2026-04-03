@@ -136,8 +136,7 @@ export const bookingService = {
     const totalTables = tables.length;
 
     // Get existing reservations for that date
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDay = new Date(date.getTime() + 86400000);
     const reservations = await prisma.reservation.findMany({
       where: {
         restaurantId,
@@ -281,8 +280,7 @@ export const bookingService = {
     const newEnd = newStart + mealDuration;
     let assignedTableId: string | null = null;
 
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDay = new Date(date.getTime() + 86400000);
 
     for (const table of tables) {
       const existingOnTable = await prisma.reservation.findMany({

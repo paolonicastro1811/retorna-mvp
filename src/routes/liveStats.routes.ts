@@ -23,8 +23,20 @@ router.get("/:restaurantId/live-stats", async (req: Request, res: Response) => {
   const dateParts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
   }).format(now); // returns "YYYY-MM-DD"
-  const todayStartUtc = new Date(dateParts + "T00:00:00Z");
-  const tomorrowStartUtc = new Date(todayStartUtc.getTime() + 24 * 60 * 60 * 1000);
+
+  // For @db.Date fields (reservation.date): UTC midnight is correct
+  const todayDateUtc = new Date(dateParts + "T00:00:00Z");
+  const tomorrowDateUtc = new Date(todayDateUtc.getTime() + 86400000);
+
+  // For full timestamps (customerEvent.occurredAt): need restaurant-local midnight as UTC
+  // Compute TZ offset: format noon UTC in restaurant TZ → difference = offset
+  const noonUtc = new Date(dateParts + "T12:00:00Z");
+  const localHourAtNoon = parseInt(
+    new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }).format(noonUtc)
+  );
+  const tzOffsetMs = (localHourAtNoon - 12) * 3600000; // e.g., -3h for São Paulo
+  const todayStartLocal = new Date(todayDateUtc.getTime() - tzOffsetMs);
+  const tomorrowStartLocal = new Date(todayStartLocal.getTime() + 86400000);
 
   // Run all queries in parallel
   const [
@@ -49,35 +61,35 @@ router.get("/:restaurantId/live-stats", async (req: Request, res: Response) => {
       distinct: ["tableId"],
     }),
 
-    // Today's revenue from visit events
+    // Today's revenue from visit events (uses restaurant-local "today")
     prisma.customerEvent.aggregate({
       where: {
         restaurantId,
         eventType: "visit",
-        occurredAt: { gte: todayStartUtc, lt: tomorrowStartUtc },
+        occurredAt: { gte: todayStartLocal, lt: tomorrowStartLocal },
       },
       _sum: { amount: true },
       _count: true,
     }),
 
-    // Distinct customers served today
+    // Distinct customers served today (uses restaurant-local "today")
     prisma.customerEvent.findMany({
       where: {
         restaurantId,
         eventType: "visit",
-        occurredAt: { gte: todayStartUtc, lt: tomorrowStartUtc },
+        occurredAt: { gte: todayStartLocal, lt: tomorrowStartLocal },
       },
       select: { customerId: true },
       distinct: ["customerId"],
     }),
 
-    // Today's reservations with table info
+    // Today's reservations with table info (@db.Date → UTC midnight comparison)
     prisma.reservation.findMany({
       where: {
         restaurantId,
         date: {
-          gte: todayStartUtc,
-          lt: tomorrowStartUtc,
+          gte: todayDateUtc,
+          lt: tomorrowDateUtc,
         },
         status: { notIn: ["cancelled"] },
       },
