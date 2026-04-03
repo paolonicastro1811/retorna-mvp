@@ -1,46 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRestaurantId } from '../contexts/AuthContext'
 import { api } from '../api/client'
-import { getCustomers, updateLastVisitAmount } from '../api/customers'
+import { getCustomers, updateLastVisitAmount, updateCustomerStatus } from '../api/customers'
 import { recordVisit } from '../api/visits'
 import { WhatsAppIcon } from '../components/icons'
 import type { Customer } from '../types'
-
-interface RecentReturn {
-  customerName: string
-  customerPhone: string
-  templateKey: string
-  messageSentAt: string
-  visitAt: string
-  daysToReturn: number
-  revenue: number
-  tableNumber: number | null
-  tableLabel: string | null
-}
-
-interface AutomationKpis {
-  kpis: {
-    totalSent: number
-    totalReturned: number
-    returnRate: number
-    totalRevenue: number
-    roiPerMessage: number
-    failedCount: number
-  }
-  templateBreakdown: any[]
-  recentReturns: RecentReturn[]
-  tierDistribution: any[]
-}
-
-const TEMPLATE_LABELS: Record<string, string> = {
-  post_visit_consent: 'Pós-visita',
-  post_visit_thanks: 'Pós-visita',
-  reward_earned: 'Recompensa',
-  surprise_discount: 'Desconto surpresa',
-  milestone_halfway: 'Metade do caminho',
-  reactivation: 'Reativação',
-  loyalty_vip: 'Cliente VIP',
-}
 
 const PERIOD_OPTIONS = [
   { label: '7 dias', days: 7 },
@@ -72,30 +36,8 @@ function getClockInTz(tz: string): string {
   }
 }
 
-// ── Demo data for design review ──
-const DEMO_CUSTOMERS: Customer[] = [
-  { id: 'd1', restaurantId: '', phone: '+5511987654321', name: 'Maria Silva', lifecycleStatus: 'active', totalVisits: 12, totalSpent: 1840, avgTicket: 153, lastVisitAt: new Date(Date.now() - 2 * 86400000).toISOString(), lastVisitAmount: 165, whatsappOptInStatus: 'granted', contactableStatus: 'contactable', marketingOptInAt: null, createdAt: '', updatedAt: '' },
-  { id: 'd2', restaurantId: '', phone: '+5511912345678', name: 'Joao Oliveira', lifecycleStatus: 'active', totalVisits: 8, totalSpent: 960, avgTicket: 120, lastVisitAt: new Date(Date.now() - 5 * 86400000).toISOString(), lastVisitAmount: 130, whatsappOptInStatus: 'granted', contactableStatus: 'contactable', marketingOptInAt: null, createdAt: '', updatedAt: '' },
-  { id: 'd3', restaurantId: '', phone: '+5511955556666', name: 'Ana Costa', lifecycleStatus: 'inactive', totalVisits: 3, totalSpent: 420, avgTicket: 140, lastVisitAt: new Date(Date.now() - 35 * 86400000).toISOString(), lastVisitAmount: 95, whatsappOptInStatus: 'granted', contactableStatus: 'contactable', marketingOptInAt: null, createdAt: '', updatedAt: '' },
-  { id: 'd4', restaurantId: '', phone: '+5511944443333', name: 'Pedro Santos', lifecycleStatus: 'active', totalVisits: 22, totalSpent: 3520, avgTicket: 160, lastVisitAt: new Date(Date.now() - 1 * 86400000).toISOString(), lastVisitAmount: 210, whatsappOptInStatus: 'granted', contactableStatus: 'contactable', marketingOptInAt: null, createdAt: '', updatedAt: '' },
-  { id: 'd5', restaurantId: '', phone: '+5511933332222', name: 'Carla Mendes', lifecycleStatus: 'inactive', totalVisits: 2, totalSpent: 180, avgTicket: 90, lastVisitAt: new Date(Date.now() - 60 * 86400000).toISOString(), lastVisitAmount: null, whatsappOptInStatus: 'unknown', contactableStatus: 'contactable', marketingOptInAt: null, createdAt: '', updatedAt: '' },
-  { id: 'd6', restaurantId: '', phone: '+5511922221111', name: 'Lucas Ferreira', lifecycleStatus: 'active', totalVisits: 15, totalSpent: 2250, avgTicket: 150, lastVisitAt: new Date(Date.now() - 3 * 86400000).toISOString(), lastVisitAmount: 175, whatsappOptInStatus: 'granted', contactableStatus: 'contactable', marketingOptInAt: null, createdAt: '', updatedAt: '' },
-]
-const DEMO_KPIS: AutomationKpis = {
-  kpis: { totalSent: 10, totalReturned: 4, returnRate: 40, totalRevenue: 670, roiPerMessage: 67, failedCount: 0 },
-  templateBreakdown: [],
-  recentReturns: [
-    { customerName: 'Maria Silva', customerPhone: '+5511987654321', templateKey: 'reactivation', messageSentAt: new Date(Date.now() - 5 * 86400000).toISOString(), visitAt: new Date(Date.now() - 2 * 86400000).toISOString(), daysToReturn: 3, revenue: 165, tableNumber: 4, tableLabel: null },
-    { customerName: 'Joao Oliveira', customerPhone: '+5511912345678', templateKey: 'surprise_discount', messageSentAt: new Date(Date.now() - 8 * 86400000).toISOString(), visitAt: new Date(Date.now() - 5 * 86400000).toISOString(), daysToReturn: 3, revenue: 130, tableNumber: null, tableLabel: null },
-    { customerName: 'Pedro Santos', customerPhone: '+5511944443333', templateKey: 'post_visit_thanks', messageSentAt: new Date(Date.now() - 3 * 86400000).toISOString(), visitAt: new Date(Date.now() - 1 * 86400000).toISOString(), daysToReturn: 2, revenue: 210, tableNumber: 7, tableLabel: null },
-    { customerName: 'Lucas Ferreira', customerPhone: '+5511922221111', templateKey: 'reward_earned', messageSentAt: new Date(Date.now() - 6 * 86400000).toISOString(), visitAt: new Date(Date.now() - 3 * 86400000).toISOString(), daysToReturn: 3, revenue: 175, tableNumber: null, tableLabel: null },
-  ],
-  tierDistribution: [],
-}
-
 export function AutomacoesPage() {
   const restaurantId = useRestaurantId()
-  const [kpiData, setKpiData] = useState<AutomationKpis | null>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(90)
@@ -114,6 +56,13 @@ export function AutomacoesPage() {
   const [savingAmount, setSavingAmount] = useState(false)
   const amountInputRef = useRef<HTMLInputElement>(null)
 
+  // Track recently updated rows for flash animation
+  const [flashId, setFlashId] = useState<string | null>(null)
+
+  // Status toggle confirmation
+  const [statusConfirmId, setStatusConfirmId] = useState<string | null>(null)
+  const [togglingStatus, setTogglingStatus] = useState(false)
+
   // Live clock in restaurant timezone
   const updateClock = useCallback(() => setClock(getClockInTz(restaurantTz)), [restaurantTz])
   useEffect(() => {
@@ -126,12 +75,10 @@ export function AutomacoesPage() {
     if (!restaurantId) return
     setLoading(true)
     Promise.all([
-      api<AutomationKpis>(`/restaurants/${restaurantId}/automation-stats?days=${days}`).catch(() => null),
       getCustomers(restaurantId).catch(() => [] as Customer[]),
       api<{ timezone: string }>(`/restaurants/${restaurantId}`).catch(() => null),
-    ]).then(([kpi, custs, rest]) => {
-      setKpiData(kpi)
-      setCustomers(custs.length > 0 ? custs : DEMO_CUSTOMERS)
+    ]).then(([custs, rest]) => {
+      setCustomers(custs)
       if (rest?.timezone) setRestaurantTz(rest.timezone)
     }).catch(console.error)
       .finally(() => setLoading(false))
@@ -140,9 +87,6 @@ export function AutomacoesPage() {
   useEffect(() => {
     if (editingAmountId && amountInputRef.current) amountInputRef.current.focus()
   }, [editingAmountId])
-
-  // Track recently updated rows for flash animation
-  const [flashId, setFlashId] = useState<string | null>(null)
 
   const handleRecordVisit = async (customer: Customer) => {
     if (submitting) return
@@ -153,21 +97,16 @@ export function AutomacoesPage() {
         customerName: customer.name || undefined,
         amount: visitAmount ? parseFloat(visitAmount) : undefined,
       })
-      // Instant UI update from response
       const updatedCustomer = result.customer
       setCustomers(prev => prev.map(c =>
         c.id === customer.id
-          ? { ...c, totalVisits: updatedCustomer.totalVisits, totalSpent: updatedCustomer.totalSpent, lastVisitAt: updatedCustomer.lastVisitAt, lastVisitAmount: updatedCustomer.lastVisitAmount }
+          ? { ...c, totalVisits: updatedCustomer.totalVisits, totalSpent: updatedCustomer.totalSpent, lastVisitAt: updatedCustomer.lastVisitAt, lastVisitAmount: updatedCustomer.lastVisitAmount, lifecycleStatus: updatedCustomer.lifecycleStatus }
           : c
       ))
       setVisitingId(null)
       setVisitAmount('')
-      // Flash the row green briefly
       setFlashId(customer.id)
       setTimeout(() => setFlashId(null), 1500)
-      // Background refresh KPIs
-      api<AutomationKpis>(`/restaurants/${restaurantId}/automation-stats?days=${days}`)
-        .then(setKpiData).catch(() => {})
     } catch {
       alert('Erro ao registrar visita')
     } finally {
@@ -183,7 +122,6 @@ export function AutomacoesPage() {
       setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, lastVisitAmount: updated.lastVisitAmount, totalSpent: updated.totalSpent } : c))
       setEditingAmountId(null)
       setEditAmountValue('')
-      // Flash the row
       setFlashId(customer.id)
       setTimeout(() => setFlashId(null), 1500)
     } catch {
@@ -193,27 +131,41 @@ export function AutomacoesPage() {
     }
   }
 
+  const handleToggleStatus = async (customer: Customer) => {
+    setTogglingStatus(true)
+    const newStatus = customer.lifecycleStatus === 'active' ? 'inactive' : 'active'
+    try {
+      const updated = await updateCustomerStatus(restaurantId, customer.id, newStatus)
+      setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, lifecycleStatus: updated.lifecycleStatus } : c))
+      setStatusConfirmId(null)
+      setFlashId(customer.id)
+      setTimeout(() => setFlashId(null), 1500)
+    } catch {
+      alert('Erro ao alterar status')
+    } finally {
+      setTogglingStatus(false)
+    }
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <div className="animate-spin h-6 w-6 border-2 border-[#25D366] border-t-transparent rounded-full" />
     </div>
   )
 
-  // KPIs computed from real customer data — update instantly on visit/edit
+  // KPIs computed from real customer data
   const totalRevenue = customers.reduce((s, c) => s + c.totalSpent, 0)
   const totalVisits = customers.reduce((s, c) => s + c.totalVisits, 0)
   const avgTicket = totalVisits > 0 ? Math.round(totalRevenue / totalVisits) : 0
   const activeCount = customers.filter(c => c.lifecycleStatus === 'active').length
-
-  // Automation returns (from API or demo)
-  const effective = kpiData?.kpis?.totalSent ? kpiData : DEMO_KPIS
-  const recentReturns = effective.recentReturns ?? []
 
   const filtered = customers.filter(c => {
     if (!search) return true
     const q = search.toLowerCase()
     return (c.name?.toLowerCase().includes(q)) || c.phone.includes(q)
   })
+
+  const confirmCustomer = customers.find(c => c.id === statusConfirmId)
 
   return (
     <div>
@@ -239,7 +191,7 @@ export function AutomacoesPage() {
         </div>
       </div>
 
-      {/* ── KPI Row (computed from real customer data) ── */}
+      {/* ── KPI Row ── */}
       <div className="grid grid-cols-4 gap-3 mb-4">
         <div className="bg-[#1a1a2e] rounded-xl p-3 text-center">
           <p className="text-2xl font-extrabold text-[#25D366]">{fmtCurrency(totalRevenue)}</p>
@@ -294,13 +246,17 @@ export function AutomacoesPage() {
                   }`}>
                     <td className="px-4 py-2.5 font-medium text-gray-800">{c.name || '—'}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        c.lifecycleStatus === 'active'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}>
+                      <button
+                        onClick={() => setStatusConfirmId(c.id)}
+                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-opacity hover:opacity-80 ${
+                          c.lifecycleStatus === 'active'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}
+                        title="Clique para alterar status"
+                      >
                         {c.lifecycleStatus === 'active' ? 'Ativo' : 'Inativo'}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-4 py-2.5 text-gray-600 text-xs">{c.phone}</td>
                     <td className="px-4 py-2.5 text-center font-semibold text-gray-800">{c.totalVisits}</td>
@@ -385,30 +341,6 @@ export function AutomacoesPage() {
         </div>
       </div>
 
-      {/* ── Attributed Returns ── */}
-      {recentReturns.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-          <h2 className="text-base font-bold text-gray-800 mb-3">Clientes que voltaram</h2>
-          <div className="space-y-2">
-            {recentReturns.slice(0, 10).map((r, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-800 truncate">{r.customerName || r.customerPhone}</p>
-                  <p className="text-xs text-gray-400">
-                    {TEMPLATE_LABELS[r.templateKey] || 'Mensagem'} — voltou em {r.daysToReturn === 1 ? '1 dia' : `${r.daysToReturn} dias`}
-                  </p>
-                </div>
-                {r.revenue > 0 && (
-                  <span className="text-sm font-bold text-[#25D366] ml-3 whitespace-nowrap">
-                    +{fmtCurrency(r.revenue)}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── CTA: Quer automatizar? ── */}
       <div className="bg-[#1a1a2e] rounded-xl p-4">
         <div className="flex items-center gap-2 mb-2">
@@ -418,10 +350,10 @@ export function AutomacoesPage() {
           <h3 className="text-base font-bold text-white">Quer automatizar?</h3>
         </div>
         <p className="text-sm text-gray-400 mb-3">
-          Cada restaurante tem seu proprio sistema. Podemos configurar a integracao automatica com o seu POS, maquininha ou sistema de pedidos.
+          Cada restaurante tem seu próprio sistema. Podemos configurar a integração automática com o seu POS, maquininha ou sistema de pedidos.
         </p>
         <a
-          href="https://wa.me/5511999999999?text=Oi!%20Quero%20saber%20mais%20sobre%20a%20automacao%20de%20registro%20de%20visitas"
+          href="https://wa.me/5511999999999?text=Oi!%20Quero%20saber%20mais%20sobre%20a%20automação%20de%20registro%20de%20visitas"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-[#1DA851] transition-colors"
@@ -430,6 +362,48 @@ export function AutomacoesPage() {
           Falar com suporte
         </a>
       </div>
+
+      {/* ── Status Change Confirm Dialog ── */}
+      {statusConfirmId && confirmCustomer && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setStatusConfirmId(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Alterar status</h3>
+            {confirmCustomer.lifecycleStatus === 'active' ? (
+              <>
+                <p className="text-sm text-gray-600 mb-1">
+                  Marcar <strong>{confirmCustomer.name || confirmCustomer.phone}</strong> como <span className="text-red-600 font-semibold">Inativo</span>?
+                </p>
+                <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 mb-4">
+                  ⚠ Clientes inativos podem receber mensagens de reativação automática se o plano automático estiver ativo.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-600 mb-4">
+                Marcar <strong>{confirmCustomer.name || confirmCustomer.phone}</strong> como <span className="text-green-600 font-semibold">Ativo</span>?
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStatusConfirmId(null)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleToggleStatus(confirmCustomer)}
+                disabled={togglingStatus}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 ${
+                  confirmCustomer.lifecycleStatus === 'active'
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : 'bg-[#25D366] hover:bg-[#1DA851]'
+                }`}
+              >
+                {togglingStatus ? '...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
