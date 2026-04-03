@@ -201,16 +201,22 @@ export function LandingPage() {
             Em menos de 2 minutos você entende tudo
           </h2>
           <p className="text-white/60 mb-10 text-lg">Assista e veja como o Retorna traz seus clientes de volta.</p>
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 mx-auto" style={{maxWidth: '780px'}}>
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 mx-auto" style={{maxWidth: '780px', position: 'relative'}}>
             <video
               controls
               playsInline
               className="w-full rounded-2xl"
               poster="/images/poster-video.png"
-              style={{aspectRatio: '16/9', backgroundImage: 'url(/images/poster-video.png)', backgroundSize: 'cover', backgroundPosition: 'center'}}
+              style={{aspectRatio: '16/9', display: 'block'}}
+              onPlay={(e) => { const overlay = e.currentTarget.parentElement?.querySelector('.poster-overlay') as HTMLElement; if (overlay) overlay.style.display = 'none'; }}
             >
               <source src="/images/d2e1ae58e7fb4654ac7f37923a0f7983.mp4" type="video/mp4" />
             </video>
+            <div className="poster-overlay" style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'url(/images/poster-video.png)', backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: '1rem', pointerEvents: 'none', zIndex: 1}}>
+              <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '72px', height: '72px', background: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', pointerEvents: 'auto'}} onClick={(e) => { const video = e.currentTarget.closest('.relative')?.querySelector('video') as HTMLVideoElement; if (video) { video.play(); (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; } }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+              </div>
+            </div>
           </div>
           <button
             onClick={() => window.open('/comecar', '_self')}
