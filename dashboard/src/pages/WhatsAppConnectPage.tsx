@@ -23,15 +23,21 @@ export default function WhatsAppConnectPage() {
   const [fbReady, setFbReady] = useState(false)
   const signupDataRef = useRef<SignupData | null>(null)
 
-  // Fetch WhatsApp connection status on mount
+  // Fetch WhatsApp connection status on mount + poll every 30s
   useEffect(() => {
-    api<WhatsAppStatus>('/whatsapp/status')
-      .then(setStatus)
-      .catch((err) => {
-        console.error('Failed to fetch WhatsApp status:', err)
-        setStatus({ connected: false })
-      })
-      .finally(() => setLoading(false))
+    const fetchStatus = () => {
+      api<WhatsAppStatus>('/whatsapp/status')
+        .then(setStatus)
+        .catch((err) => {
+          console.error('Failed to fetch WhatsApp status:', err)
+          setStatus({ connected: false })
+        })
+        .finally(() => setLoading(false))
+    }
+
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 30_000)
+    return () => clearInterval(interval)
   }, [])
 
   // Listen for Embedded Signup postMessage events

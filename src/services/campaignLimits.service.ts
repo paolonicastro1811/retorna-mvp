@@ -185,7 +185,7 @@ function getHourInTimezone(date: Date, timezone: string): number {
     const timeStr = date.toLocaleString("en-US", { timeZone: timezone, hour: "numeric", hour12: false });
     return parseInt(timeStr, 10);
   } catch {
-    // Fallback: assume Sao Paulo (UTC-3)
-    return (date.getUTCHours() - 3 + 24) % 24;
+    // Fallback: use UTC (safer than assuming a fixed offset)
+    return date.getUTCHours();
   }
 }

@@ -1,5 +1,7 @@
 const API_BASE = import.meta.env.PROD ? 'https://api.retornabrasil.com' : ''
 
+let isRedirecting = false
+
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('auth_token')
 
@@ -19,7 +21,8 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   // Session expired or invalid → redirect to login
   if (res.status === 401) {
     const isAuthRoute = path.startsWith('/auth/')
-    if (!isAuthRoute) {
+    if (!isAuthRoute && !isRedirecting) {
+      isRedirecting = true
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
       window.location.href = '/login'

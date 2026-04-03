@@ -6,6 +6,7 @@ import { onVisitRegistered } from "../services/loyalty.service";
 import { prisma } from "../database/client";
 import { validate } from "../middleware/validate";
 import { recordVisitSchema } from "../schemas";
+import { normalizePhone } from "../shared/phone";
 
 const TIER_ORDER = ["novo", "frequente", "prata", "ouro"];
 
@@ -24,7 +25,7 @@ router.post("/:restaurantId/visits", validate(recordVisitSchema), async (req: Re
 
     const result = await customerEventService.recordVisit({
       restaurantId,
-      phone,
+      phone: normalizePhone(phone),
       customerName,
       amount: amount != null ? Number(amount) : undefined,
       occurredAt: occurredAt ? new Date(occurredAt) : undefined,
