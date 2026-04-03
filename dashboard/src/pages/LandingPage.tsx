@@ -309,10 +309,3 @@ export function LandingPage() {
     </div>
   )
 }
-torização para contatar seus clientes via WhatsApp conforme a LGPD. Todas as mensagens incluem opção de descadastro.</p>
-        </div>
-      </footer>
-
-    </div>
-  )
-}
