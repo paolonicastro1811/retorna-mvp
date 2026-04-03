@@ -522,7 +522,8 @@ export function SettingsPage() {
       <section>
         <div className="bg-gray-50 rounded-xl p-4">
           <p className="text-sm text-gray-400 mb-2">Ative ou desative as mensagens automáticas. Máximo 5 mensagens por cliente/mês.</p>
-          <p className="text-xs text-gray-400 mb-3">Mensagens disparadas por visita (milestone, recompensa, surpresa, VIP) não contam no limite quando o cliente visita com frequência.</p>
+          <p className="text-xs text-gray-400 mb-1">Mensagens disparadas por visita (milestone, recompensa, surpresa, VIP) não contam no limite quando o cliente visita com frequência.</p>
+          <p className="text-xs text-gray-400 mb-3 italic">Na anteprima, "Maria" é apenas um exemplo — no envio real, será usado o nome do cliente cadastrado.</p>
           <div className="space-y-2">
             {[...systemTemplates].sort((a, b) => (TEMPLATE_ORDER[a.name]?.order ?? 99) - (TEMPLATE_ORDER[b.name]?.order ?? 99)).map(tpl => {
               const meta = TEMPLATE_ORDER[tpl.name]
