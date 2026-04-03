@@ -61,7 +61,7 @@ router.post("/checkout", async (req: Request, res: Response) => {
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
-    payment_method_types: ["card", "boleto"],
+    payment_method_types: ["card", "pix", "boleto"],
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${appUrl}/painel?billing=success`,
     cancel_url: `${appUrl}/painel?billing=canceled`,
