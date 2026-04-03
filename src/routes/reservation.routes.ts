@@ -114,7 +114,7 @@ router.post("/:restaurantId/reservations", async (req: Request, res: Response) =
     });
     if (!restaurant) return res.status(404).json({ error: "Restaurant not found" });
 
-    const mealDuration = restaurant.avgMealDurationMinutes || 90;
+    const mealDuration = restaurant.avgMealDurationMinutes || 60;
 
     // FIX 1: Validate operating hours
     const dayOfWeek = getDayOfWeekInTimezone(date, restaurant.timezone);
@@ -300,7 +300,7 @@ router.get("/:restaurantId/reservations/availability", async (req: Request, res:
       where: { id: restaurantId },
       select: { timezone: true, avgMealDurationMinutes: true },
     });
-    const mealDuration = restaurant?.avgMealDurationMinutes || 90;
+    const mealDuration = restaurant?.avgMealDurationMinutes || 60;
 
     // Use restaurant timezone for day-of-week calculation
     const dayOfWeek = getDayOfWeekInTimezone(dateStr, restaurant?.timezone ?? "America/Sao_Paulo");

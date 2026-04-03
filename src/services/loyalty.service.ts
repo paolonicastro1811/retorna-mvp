@@ -182,10 +182,10 @@ export async function runDailyAutomation() {
         totalVisits: { gte: 1 },
         tier: { not: "novo" },
         lastVisitAt: { lte: cutoffDate },
-        // Not already reactivated recently (cooldown 30 days)
+        // Not already reactivated recently (fixed 30-day cooldown from today)
         OR: [
           { lastReactivationSentAt: null },
-          { lastReactivationSentAt: { lte: cutoffDate } },
+          { lastReactivationSentAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
         ],
       },
     });

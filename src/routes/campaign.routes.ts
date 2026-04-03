@@ -280,7 +280,18 @@ router.post("/campaigns/:campaignId/build", async (req: Request, res: Response) 
 router.post("/campaigns/:campaignId/queue", async (req: Request, res: Response) => {
   try {
     if (!await verifyCampaignOwner(req, res)) return;
-    const result = await messagingService.queueMessages(param(req, "campaignId"));
+    const campaignId = param(req, "campaignId");
+
+    // Atomic status guard: only allow queueing if campaign is READY (prevents duplicate messages)
+    const guard = await prisma.campaign.updateMany({
+      where: { id: campaignId, status: "ready" },
+      data: { status: "ready" }, // no-op update, just validates status atomically
+    });
+    if (guard.count === 0) {
+      return res.status(409).json({ error: "Campaign is not in READY status. Cannot queue messages." });
+    }
+
+    const result = await messagingService.queueMessages(campaignId);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });

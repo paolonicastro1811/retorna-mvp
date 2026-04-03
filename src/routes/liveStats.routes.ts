@@ -91,7 +91,7 @@ router.get("/:restaurantId/live-stats", async (req: Request, res: Response) => {
           gte: todayDateUtc,
           lt: tomorrowDateUtc,
         },
-        status: { notIn: ["cancelled"] },
+        status: { notIn: ["cancelled", "no_show"] },
       },
       include: {
         table: { select: { tableNumber: true, label: true, seats: true } },

@@ -201,7 +201,12 @@ export const messagingService = {
       }
     }
 
-    await campaignRepository.updateStatus(campaignId, CampaignStatus.COMPLETED);
+    // If aborted due to consecutive failures, set back to READY so it can be retried
+    if (consecutiveFailures >= 10) {
+      await campaignRepository.updateStatus(campaignId, CampaignStatus.READY);
+    } else {
+      await campaignRepository.updateStatus(campaignId, CampaignStatus.COMPLETED);
+    }
 
     return { sent, failed, total: queued.length };
   },

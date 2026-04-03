@@ -101,6 +101,15 @@ export const campaignService = {
         !recentRecipientIds.has(c.id) // Cooldown: no repeat within 7 days
     );
 
+    if (customers.length === 0) {
+      // Revert status back to DRAFT since no audience was found
+      await prisma.campaign.update({
+        where: { id: campaignId },
+        data: { status: CampaignStatus.DRAFT },
+      });
+      throw new Error("Nenhum cliente elegível encontrado para esta campanha. Verifique os critérios de segmentação.");
+    }
+
     // Atomic: delete old audience + create new + set READY in one transaction
     await prisma.$transaction(async (tx) => {
       await tx.campaignAudienceItem.deleteMany({ where: { campaignId } });
