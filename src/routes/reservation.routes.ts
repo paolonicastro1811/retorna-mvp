@@ -103,8 +103,8 @@ router.post("/:restaurantId/reservations", async (req: Request, res: Response) =
       return res.status(400).json({ error: "endTime must be after start time" });
     }
 
-    // Parse date without "Z" — treat as local time (restaurant timezone)
-    const parsedDate = new Date(date + "T00:00:00");
+    // Parse as UTC midnight — @db.Date fields are stored date-only
+    const parsedDate = new Date(date + "T00:00:00Z");
     if (isNaN(parsedDate.getTime())) return res.status(400).json({ error: "Invalid date" });
 
     // Fetch restaurant for timezone and avgMealDurationMinutes
@@ -235,7 +235,7 @@ router.patch("/:restaurantId/reservations/:reservationId", async (req: Request, 
     if (notes !== undefined) data.notes = notes;
     if (customerName !== undefined) data.customerName = customerName;
     if (date !== undefined) {
-      const parsedDate = new Date(date + "T00:00:00");
+      const parsedDate = new Date(date + "T00:00:00Z");
       if (isNaN(parsedDate.getTime())) return res.status(400).json({ error: "Invalid date" });
       data.date = parsedDate;
     }
@@ -292,8 +292,8 @@ router.get("/:restaurantId/reservations/availability", async (req: Request, res:
 
     if (!dateStr) return res.status(400).json({ error: "date is required" });
 
-    // Parse without "Z" — treat as local time (restaurant timezone)
-    const d = new Date(dateStr + "T00:00:00");
+    // Parse as UTC midnight — @db.Date fields are stored date-only
+    const d = new Date(dateStr + "T00:00:00Z");
     if (isNaN(d.getTime())) return res.status(400).json({ error: "Invalid date" });
 
     // Fetch restaurant for timezone and meal duration

@@ -283,8 +283,8 @@ async function isUnderMonthlyCap(
   const maxPerMonth = restaurant?.maxMsgsPerCustomerMonth ?? 5;
 
   const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
 
   const sentThisMonth = await prisma.automationLog.count({
     where: {

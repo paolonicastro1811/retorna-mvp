@@ -15,7 +15,7 @@ export async function runPostVisitConsent(): Promise<{ sent: number; errors: num
   const windowEnd = new Date(Date.now() - ONE_DAY_MS);
   const windowStart = new Date(Date.now() - ONE_DAY_MS - WINDOW_MS);
 
-  // Find visit events within the 2h-2h30m window whose customer
+  // Find visit events within the 24h-25h window whose customer
   // has never received the welcome/consent message
   const recentVisits = await prisma.customerEvent.findMany({
     where: {

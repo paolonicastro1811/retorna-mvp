@@ -205,7 +205,7 @@ cron.schedule("*/5 * * * *", async () => {
   }
 });
 
-// Post-visit consent: ogni 15 minuti — sends "Foi um prazer" 2h after visit
+// Post-visit consent: ogni 15 minuti — sends "Foi um prazer" 24h after visit
 cron.schedule("*/15 * * * *", async () => {
   try {
     const result = await runPostVisitConsent();
@@ -269,8 +269,8 @@ cron.schedule("0 3 * * *", async () => {
   }
 });
 
-// Loyalty automation: todo dia as 10:00 (horario do restaurante)
-cron.schedule("0 10 * * *", async () => {
+// Loyalty automation: todo dia as 13:00 UTC = 10:00 Brasília
+cron.schedule("0 13 * * *", async () => {
   try {
     console.log("[Cron:Loyalty] Running daily automation...");
     const result = await runDailyAutomation();
@@ -280,8 +280,8 @@ cron.schedule("0 10 * * *", async () => {
   }
 });
 
-// Surprise discount: todo dia as 14:00 — random discounts to opted-in customers
-cron.schedule("0 14 * * *", async () => {
+// Surprise discount: todo dia as 17:00 UTC = 14:00 Brasília — random discounts to opted-in customers
+cron.schedule("0 17 * * *", async () => {
   try {
     const result = await runSurpriseDiscount();
     if (result.sent > 0 || result.errors > 0) {
