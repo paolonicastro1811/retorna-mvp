@@ -140,7 +140,7 @@ export function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
             <div>
               <p className="text-sm font-bold tracking-widest uppercase text-[#0f9d58] mb-3">O problema</p>
-              <h2 className="text-[clamp(1.8rem,3.5vw,2.4rem)] font-extrabold leading-tight text-[#1a1a2e] mb-4">Você está perdendo dinheiro todos os dias — sem perceber</h2>
+              <h2 className="text-[clamp(1.8rem,3.5vw,2.4rem)] font-extrabold leading-tight text-[#1a1a2e] mb-4">Você está perdendo dinheiro todos os dias sem perceber</h2>
               <p className="text-[#6b7280] mb-8 text-lg leading-relaxed">A maioria dos restaurantes gasta para conquistar novos clientes, mas deixa os que já vieram — e gostaram — simplesmente sumirem.</p>
               <ul className="space-y-4">
                 {['Você já investiu para conquistar esses clientes','Muitos vieram uma ou duas vezes e nunca mais voltaram','Ninguém faz follow-up com quem sumiu','Cada cliente inativo é dinheiro deixado na mesa','Você não sabe quanto está perdendo por mês'].map((t, i) => (
