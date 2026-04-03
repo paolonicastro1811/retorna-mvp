@@ -114,7 +114,7 @@ export const bookingService = {
       select: { timezone: true, avgMealDurationMinutes: true },
     });
     const timezone = restaurant?.timezone ?? "America/Sao_Paulo";
-    const mealDuration = restaurant?.avgMealDurationMinutes || 90;
+    const mealDuration = restaurant?.avgMealDurationMinutes || 60;
 
     // Parse as UTC midnight — @db.Date fields are stored date-only
     const date = new Date(dateStr + "T00:00:00Z");
@@ -235,7 +235,7 @@ export const bookingService = {
       select: { timezone: true, avgMealDurationMinutes: true },
     });
     const timezone = restaurant?.timezone ?? "America/Sao_Paulo";
-    const mealDuration = restaurant?.avgMealDurationMinutes || 90;
+    const mealDuration = restaurant?.avgMealDurationMinutes || 60;
 
     // Check restaurant is open
     const dayOfWeek = getDayOfWeekInTimezone(booking.date, timezone);

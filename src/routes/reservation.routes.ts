@@ -51,7 +51,7 @@ router.get("/:restaurantId/reservations", async (req: Request, res: Response) =>
       where: { id: restaurantId },
       select: { avgMealDurationMinutes: true },
     });
-    const durationMs = (restaurant?.avgMealDurationMinutes || 90) * 60 * 1000;
+    const durationMs = (restaurant?.avgMealDurationMinutes || 60) * 60 * 1000;
     const cutoff = new Date(Date.now() - durationMs);
 
     await prisma.reservation.updateMany({

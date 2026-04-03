@@ -122,7 +122,7 @@ export function SettingsPage() {
   const [editHours, setEditHours] = useState<{ dayOfWeek: number; open: string; close: string; closed: boolean }[]>([])
   const [savingHours, setSavingHours] = useState(false)
   const [savedHours, setSavedHours] = useState(false)
-  const [mealDuration, setMealDuration] = useState(90)
+  const [mealDuration, setMealDuration] = useState(60)
 
   // Templates / Automations
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
@@ -165,7 +165,7 @@ export function SettingsPage() {
       setPhone(r.phone ?? '')
       setOriginalPhone(r.phone ?? '')
       setTimezone(r.timezone)
-      setMealDuration(r.avgMealDurationMinutes ?? 90)
+      setMealDuration(r.avgMealDurationMinutes ?? 60)
       setHours(h)
       setTemplates(tpls)
       if (lim) setCustomLimits(lim)

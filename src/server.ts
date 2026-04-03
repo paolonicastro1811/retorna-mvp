@@ -185,7 +185,7 @@ cron.schedule("*/5 * * * *", async () => {
     });
     let completed = 0;
     for (const r of restaurants) {
-      const durationMs = (r.avgMealDurationMinutes ?? 90) * 60 * 1000;
+      const durationMs = (r.avgMealDurationMinutes ?? 60) * 60 * 1000;
       const cutoff = new Date(Date.now() - durationMs);
       const result = await prisma.reservation.updateMany({
         where: {

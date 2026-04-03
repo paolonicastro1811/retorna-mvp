@@ -29,7 +29,7 @@ model Restaurant {
   tierOuroMinVisits      Int                 @default(25) @map("tier_ouro_min_visits")
   tierPrataMinVisits     Int                 @default(10) @map("tier_prata_min_visits")
   roomLayout             Json?               @map("room_layout")
-  avgMealDurationMinutes Int                 @default(90) @map("avg_meal_duration_minutes")
+  avgMealDurationMinutes Int                 @default(60) @map("avg_meal_duration_minutes")
   waAccessToken          String?             @map("wa_access_token")
   waTokenExpiresAt       DateTime?           @map("wa_token_expires_at")
   waConnectedAt          DateTime?           @map("wa_connected_at")
