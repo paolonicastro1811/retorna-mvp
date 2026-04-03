@@ -9,11 +9,16 @@ import { getConversationWindow, saveConversationReply } from "../services/intent
 import { classifyIntent } from "../services/intent/classifier.service";
 import { NextAction } from "../services/intent/intent.types";
 import { bookingService } from "../services/booking.service";
+import { normalizePhone } from "../shared/phone";
 
 const router = Router();
 
-// Startup warning: META_APP_SECRET not configured
+// Block production without META_APP_SECRET
 if (!process.env.META_APP_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    console.error("FATAL: META_APP_SECRET must be set in production for webhook signature verification.");
+    process.exit(1);
+  }
   console.warn("\n" + "!".repeat(70));
   console.warn("!!  WARNING: META_APP_SECRET is not set.                       !!");
   console.warn("!!  Webhook signature verification is DISABLED.                !!");
@@ -42,14 +47,19 @@ function verifyWebhookSignature(req: Request, res: Response, next: NextFunction)
     return;
   }
 
+  // Use raw body bytes for HMAC (express.json verify callback stores req.rawBody)
+  const rawBody = (req as any).rawBody;
   const expectedSignature =
     "sha256=" +
     crypto
       .createHmac("sha256", appSecret)
-      .update(JSON.stringify(req.body))
+      .update(rawBody || JSON.stringify(req.body))
       .digest("hex");
 
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+  const sigBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expectedSignature);
+
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
     console.warn("[Webhook:WhatsApp] Invalid X-Hub-Signature-256 — rejecting");
     res.sendStatus(401);
     return;
@@ -65,6 +75,23 @@ function verifyWebhookSignature(req: Request, res: Response, next: NextFunction)
 // are processed as a single conversation turn.
 // ============================================================
 const REPLY_DELAY_MS = 5_000; // 5 seconds
+
+// --- Webhook idempotency: track processed Meta message IDs (in-memory LRU) ---
+const processedMsgIds = new Set<string>();
+const MAX_PROCESSED_IDS = 10_000;
+function markProcessed(msgId: string): boolean {
+  if (processedMsgIds.has(msgId)) return false; // already processed
+  if (processedMsgIds.size >= MAX_PROCESSED_IDS) {
+    // Evict oldest 2000 entries (Set iterates in insertion order)
+    const iter = processedMsgIds.values();
+    for (let i = 0; i < 2000; i++) {
+      const val = iter.next().value;
+      if (val !== undefined) processedMsgIds.delete(val);
+    }
+  }
+  processedMsgIds.add(msgId);
+  return true; // first time seeing this message
+}
 const replyTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /**
@@ -172,47 +199,40 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
           }
 
           for (const msg of messages) {
+            // Idempotency: skip already-processed messages (Meta retries)
+            const metaMsgId = msg.id as string | undefined;
+            if (metaMsgId && !markProcessed(metaMsgId)) {
+              console.log(`[Webhook:WhatsApp] Skipping duplicate msg.id=${metaMsgId}`);
+              continue;
+            }
+
             const from = msg.from as string | undefined;
             const text = (msg.text?.body as string | undefined)?.trim().toLowerCase();
             const rawText = msg.text?.body as string | undefined;
 
             if (!from) continue;
 
-            const phoneE164 = from.startsWith("+") ? from : `+${from}`;
-            const phoneVariants = [from, phoneE164];
+            const phoneE164 = normalizePhone(from);
 
-            // Find existing customer
-            let customer = null;
-            for (const phone of phoneVariants) {
-              const found = await findCustomerByPhoneGlobal(phone);
-              if (found) {
-                customer = found;
-                break;
-              }
+            // Resolve restaurantId first (needed for scoped customer lookup)
+            let restaurantId: string | null = waRestaurant?.id ?? null;
+            if (!restaurantId && businessPhone) {
+              const normalizedBizPhone = normalizePhone(businessPhone);
+              const rest = await prisma.restaurant.findFirst({ where: { phone: normalizedBizPhone } });
+              if (rest) { restaurantId = rest.id; }
             }
+            if (!restaurantId) {
+              console.warn(`[Webhook:WhatsApp] No restaurant matched for inbound from ${from} — skipping`);
+              continue;
+            }
+
+            // Find existing customer scoped to restaurant (prevents cross-tenant leak)
+            let customer = await prisma.customer.findUnique({
+              where: { restaurantId_phone: { restaurantId, phone: phoneE164 } },
+            });
 
             // --- Auto-create unknown customer (immediate) ---
             if (!customer) {
-              // Prefer restaurant resolved from phone_number_id (per-restaurant routing)
-              let restaurantId: string | null = waRestaurant?.id ?? null;
-
-              // Fallback: match by business phone number
-              if (!restaurantId && businessPhone) {
-                const phoneVariantsRestaurant = [businessPhone, `+${businessPhone}`];
-                for (const rp of phoneVariantsRestaurant) {
-                  const rest = await prisma.restaurant.findFirst({ where: { phone: rp } });
-                  if (rest) { restaurantId = rest.id; break; }
-                }
-              }
-              if (!restaurantId) {
-                const first = await prisma.restaurant.findFirst();
-                restaurantId = first?.id ?? null;
-              }
-
-              if (!restaurantId) {
-                console.warn(`[Webhook:WhatsApp] No restaurant found for inbound from ${from}`);
-                continue;
-              }
 
               customer = await prisma.customer.create({
                 data: {
@@ -231,17 +251,25 @@ router.post("/", verifyWebhookSignature, async (req: Request, res: Response) => 
               );
             }
 
-            // --- Log inbound message (immediate) ---
-            await prisma.inboundMessage.create({
-              data: {
-                restaurantId: customer.restaurantId,
-                customerId: customer.id,
-                phoneE164,
-                messageText: rawText ?? null,
-                receivedAt: new Date(),
-                source: "whatsapp",
-              },
+            // --- Log inbound message (rate-limited: max 100/hour per customer) ---
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const recentCount = await prisma.inboundMessage.count({
+              where: { customerId: customer.id, receivedAt: { gte: oneHourAgo } },
             });
+            if (recentCount < 100) {
+              await prisma.inboundMessage.create({
+                data: {
+                  restaurantId: customer.restaurantId,
+                  customerId: customer.id,
+                  phoneE164,
+                  messageText: rawText ?? null,
+                  receivedAt: new Date(),
+                  source: "whatsapp",
+                },
+              });
+            } else {
+              console.warn(`[Webhook:WhatsApp] Rate limit: ${phoneE164} exceeded 100 msgs/hour — skipping storage`);
+            }
 
             // --- Opt-out (immediate + confirmation message) ---
             if (text && OPT_OUT_KEYWORDS.some((kw) => text === kw)) {
@@ -585,7 +613,11 @@ async function processAIReply(
       updateData.welcomeAutoReplySentAt = new Date();
     }
     if (shouldNudge) {
-      updateData.marketingNudgeSentAt = new Date();
+      // Atomic: only set if still null (prevents duplicate nudge from concurrent webhooks)
+      await prisma.customer.updateMany({
+        where: { id: freshCustomer.id, marketingNudgeSentAt: null },
+        data: { marketingNudgeSentAt: new Date() },
+      });
     }
     if (Object.keys(updateData).length > 0) {
       await prisma.customer.update({
@@ -612,11 +644,6 @@ async function processAIReply(
   }
 }
 
-// --- Helper: find customer by phone across all restaurants ---
-async function findCustomerByPhoneGlobal(phone: string) {
-  return prisma.customer.findFirst({
-    where: { phone },
-  });
-}
+// findCustomerByPhoneGlobal removed — always use scoped lookup with restaurantId
 
 export const whatsappWebhookRouter = router;

@@ -22,7 +22,7 @@ export const customerRepository = {
 
   async findByLifecycle(restaurantId: string, statuses: LifecycleStatus[]) {
     return prisma.customer.findMany({
-      where: { restaurantId, lifecycleStatus: { in: statuses } },
+      where: { restaurantId, deletedAt: null, lifecycleStatus: { in: statuses } },
     });
   },
 
@@ -37,6 +37,7 @@ export const customerRepository = {
     return prisma.customer.findMany({
       where: {
         restaurantId,
+        deletedAt: null,
         ...(filters.lifecycle && {
           lifecycleStatus: { in: filters.lifecycle },
         }),
@@ -87,11 +88,11 @@ export const customerRepository = {
   },
 
   async findAllByRestaurant(restaurantId: string) {
-    return prisma.customer.findMany({ where: { restaurantId } });
+    return prisma.customer.findMany({ where: { restaurantId, deletedAt: null } });
   },
 
   async countByRestaurant(restaurantId: string) {
-    return prisma.customer.count({ where: { restaurantId } });
+    return prisma.customer.count({ where: { restaurantId, deletedAt: null } });
   },
 
   async updateLastReactivatedAt(id: string, timestamp: Date) {

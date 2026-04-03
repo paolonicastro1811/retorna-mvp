@@ -38,6 +38,12 @@ router.post("/import", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "restaurantId is required" });
   }
 
+  // Tenant isolation: JWT users can only import to their own restaurant
+  const user = (req as any).user;
+  if (user && user.restaurantId !== restaurantId) {
+    return res.status(403).json({ error: "Forbidden — you cannot access this restaurant" });
+  }
+
   const restaurant = await prisma.restaurant.findUnique({
     where: { id: restaurantId },
   });
@@ -140,6 +146,12 @@ router.post("/run-campaign", async (req: Request, res: Response) => {
 
   if (!restaurantId) {
     return res.status(400).json({ error: "restaurantId is required" });
+  }
+
+  // Tenant isolation
+  const user = (req as any).user;
+  if (user && user.restaurantId !== restaurantId) {
+    return res.status(403).json({ error: "Forbidden — you cannot access this restaurant" });
   }
 
   const restaurant = await prisma.restaurant.findUnique({
@@ -252,6 +264,12 @@ router.get("/report", async (req: Request, res: Response) => {
 
   if (!restaurantId) {
     return res.status(400).json({ error: "restaurantId query param is required" });
+  }
+
+  // Tenant isolation
+  const reportUser = (req as any).user;
+  if (reportUser && reportUser.restaurantId !== restaurantId) {
+    return res.status(403).json({ error: "Forbidden — you cannot access this restaurant" });
   }
 
   const restaurant = await prisma.restaurant.findUnique({
@@ -395,6 +413,12 @@ router.post("/grant-optin", async (req: Request, res: Response) => {
 
   if (!restaurantId) {
     return res.status(400).json({ error: "restaurantId is required" });
+  }
+
+  // Tenant isolation
+  const demoUser = (req as any).user;
+  if (demoUser && demoUser.restaurantId !== restaurantId) {
+    return res.status(403).json({ error: "Forbidden — you cannot access this restaurant" });
   }
 
   // If no phones specified, grant opt-in to ALL customers (demo convenience)

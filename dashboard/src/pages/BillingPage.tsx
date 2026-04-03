@@ -21,11 +21,12 @@ export function BillingPage() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
   const [loading, setLoading] = useState(true)
   const [redirecting, setRedirecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     api<BillingStatus>('/billing/status')
       .then(setStatus)
-      .catch(() => {})
+      .catch(() => setError('Erro ao carregar dados de assinatura'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -36,8 +37,14 @@ export function BillingPage() {
         method: 'POST',
         body: JSON.stringify({ billingCycle: cycle }),
       })
-      window.location.href = url
+      if (url && url.startsWith('https://')) {
+        window.location.href = url
+      } else {
+        setError('Erro ao gerar link de pagamento')
+        setRedirecting(false)
+      }
     } catch {
+      setError('Erro ao processar pagamento')
       setRedirecting(false)
     }
   }
@@ -53,6 +60,14 @@ export function BillingPage() {
     return (
       <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center">
         <p className="text-gray-500">Carregando...</p>
+      </div>
+    )
+  }
+
+  if (error && !status) {
+    return (
+      <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center">
+        <p className="text-red-500">{error}</p>
       </div>
     )
   }

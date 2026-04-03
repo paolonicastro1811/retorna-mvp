@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRestaurantId } from '../contexts/AuthContext'
 import { getLiveStats } from '../api/liveStats'
 import type { LiveStats } from '../types'
@@ -22,7 +22,8 @@ export function SalaAoVivoPage() {
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
+    if (!restaurantId) return
     try {
       const data = await getLiveStats(restaurantId)
       setStats(data)
@@ -32,13 +33,13 @@ export function SalaAoVivoPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [restaurantId])
 
   useEffect(() => {
     fetchStats()
     const interval = setInterval(fetchStats, 15_000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchStats])
 
   if (loading && !stats) {
     return (

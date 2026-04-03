@@ -7,29 +7,59 @@ import { param } from "../shared/params";
 
 const router = Router();
 
-router.post("/lifecycle-refresh", async (_req: Request, res: Response) => {
-  const result = await runLifecycleRefresh();
-  res.json(result);
+// Global job endpoints — restricted to API key auth only (no JWT users)
+router.post("/lifecycle-refresh", async (req: Request, res: Response) => {
+  try {
+    // Only allow if API key auth (server-to-server), not JWT user
+    if ((req as any).user) {
+      return res.status(403).json({ error: "Global jobs are restricted to server-to-server API key auth" });
+    }
+    const result = await runLifecycleRefresh();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });
 
 router.post(
   "/lifecycle-refresh/:restaurantId",
   async (req: Request, res: Response) => {
-    const result = await segmentationService.refreshAllForRestaurant(
-      param(req, "restaurantId")
-    );
-    res.json(result);
+    try {
+      const user = (req as any).user;
+      const rid = param(req, "restaurantId");
+      if (user && user.restaurantId !== rid) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const result = await segmentationService.refreshAllForRestaurant(rid);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
   }
 );
 
-router.post("/audience-build", async (_req: Request, res: Response) => {
-  const result = await runAudienceBuild();
-  res.json(result);
+router.post("/audience-build", async (req: Request, res: Response) => {
+  try {
+    if ((req as any).user) {
+      return res.status(403).json({ error: "Global jobs are restricted to server-to-server API key auth" });
+    }
+    const result = await runAudienceBuild();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });
 
-router.post("/message-dispatch", async (_req: Request, res: Response) => {
-  const result = await runMessageDispatch();
-  res.json(result);
+router.post("/message-dispatch", async (req: Request, res: Response) => {
+  try {
+    if ((req as any).user) {
+      return res.status(403).json({ error: "Global jobs are restricted to server-to-server API key auth" });
+    }
+    const result = await runMessageDispatch();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });
 
 export const jobRouter = router;

@@ -10,6 +10,7 @@
  * Each customer can only receive 1 surprise per 30 days.
  */
 
+import crypto from "crypto";
 import { prisma } from "../database/client";
 import { whatsappProvider, WhatsAppCredentials } from "../services/whatsapp.provider";
 
@@ -86,9 +87,14 @@ export async function runSurpriseDiscount(): Promise<{ sent: number; errors: num
 
     if (eligible.length === 0) continue;
 
-    // Pick random customers
-    const shuffled = eligible.sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, Math.min(surpriseCount, eligible.length));
+    // Pick random customers using crypto-secure randomization
+    const selected: typeof eligible = [];
+    const pool = [...eligible];
+    const pickCount = Math.min(surpriseCount, pool.length);
+    for (let i = 0; i < pickCount; i++) {
+      const idx = crypto.randomInt(pool.length);
+      selected.push(pool.splice(idx, 1)[0]);
+    }
 
     const credentials: WhatsAppCredentials = {
       accessToken: restaurant.waAccessToken!,

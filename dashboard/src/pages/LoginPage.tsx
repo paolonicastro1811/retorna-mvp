@@ -15,7 +15,10 @@ export function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email.trim() || !password.trim()) return
+    if (!email.trim() || (!forgotMode && !password.trim())) {
+      setError('Preencha todos os campos')
+      return
+    }
     setLoading(true)
     setError('')
 

@@ -61,7 +61,7 @@ router.post("/magic-link", validate(magicLinkSchema), async (req: Request, res: 
   const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRES_MINUTES * 60 * 1000);
 
   // Save token
-  await prisma.magicLinkToken.create({
+  const savedToken = await prisma.magicLinkToken.create({
     data: {
       token,
       email: normalizedEmail,
@@ -76,6 +76,8 @@ router.post("/magic-link", validate(magicLinkSchema), async (req: Request, res: 
   try {
     await sendMagicLinkEmail(normalizedEmail, token, user.restaurant.name);
   } catch (err: any) {
+    // Cleanup orphan token on email failure
+    await prisma.magicLinkToken.delete({ where: { id: savedToken.id } }).catch(() => {});
     console.error("[Auth] Failed to send magic link email:", err);
     return res.status(500).json({ error: "Erro ao enviar email", detail: err.message || String(err) });
   }
@@ -99,28 +101,18 @@ router.get("/verify", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Token e obrigatorio" });
   }
 
-  // Find valid token
-  const magicToken = await prisma.magicLinkToken.findUnique({
-    where: { token },
-  });
-
-  if (!magicToken) {
-    return res.status(401).json({ error: "Link invalido" });
-  }
-
-  if (magicToken.usedAt) {
-    return res.status(401).json({ error: "Este link ja foi utilizado" });
-  }
-
-  if (magicToken.expiresAt < new Date()) {
-    return res.status(401).json({ error: "Link expirado. Solicite um novo." });
-  }
-
-  // Mark as used
-  await prisma.magicLinkToken.update({
-    where: { id: magicToken.id },
+  // Atomic: find + mark as used in one step (prevents TOCTOU race)
+  const result = await prisma.magicLinkToken.updateMany({
+    where: { token, usedAt: null, expiresAt: { gte: new Date() } },
     data: { usedAt: new Date() },
   });
+
+  if (result.count === 0) {
+    return res.status(401).json({ error: "Link invalido, expirado ou ja utilizado" });
+  }
+
+  const magicToken = await prisma.magicLinkToken.findUnique({ where: { token } });
+  if (!magicToken) return res.status(401).json({ error: "Link invalido" });
 
   // Find user
   const user = await prisma.user.findUnique({
@@ -202,20 +194,25 @@ router.post("/set-password", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Token e senha são obrigatórios" });
   }
 
-  if (password.length < 6) {
-    return res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
+  if (password.length < 10) {
+    return res.status(400).json({ error: "Senha deve ter no mínimo 10 caracteres" });
+  }
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+    return res.status(400).json({ error: "Senha deve conter maiúscula, minúscula e número" });
   }
 
-  const magicToken = await prisma.magicLinkToken.findUnique({ where: { token } });
+  // Atomic: find + mark as used in one step (prevents TOCTOU race)
+  const atomicResult = await prisma.magicLinkToken.updateMany({
+    where: { token, usedAt: null, expiresAt: { gte: new Date() } },
+    data: { usedAt: new Date() },
+  });
 
-  if (!magicToken || magicToken.usedAt || magicToken.expiresAt < new Date()) {
+  if (atomicResult.count === 0) {
     return res.status(401).json({ error: "Link inválido ou expirado" });
   }
 
-  await prisma.magicLinkToken.update({
-    where: { id: magicToken.id },
-    data: { usedAt: new Date() },
-  });
+  const magicToken = await prisma.magicLinkToken.findUnique({ where: { token } });
+  if (!magicToken) return res.status(401).json({ error: "Link inválido" });
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.update({

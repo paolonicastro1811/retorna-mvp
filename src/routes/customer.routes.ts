@@ -61,7 +61,9 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const customer = await customerRepository.findById(param(req, "customerId"));
-      if (!customer) return res.status(404).json({ error: "Not found" });
+      if (!customer || customer.restaurantId !== param(req, "restaurantId")) {
+        return res.status(404).json({ error: "Not found" });
+      }
       res.json(customer);
     } catch (err) {
       console.error('[Route] Error:', err);
@@ -90,7 +92,9 @@ router.get(
           attributions: true,
         },
       });
-      if (!customer) return res.status(404).json({ error: "Not found" });
+      if (!customer || customer.restaurantId !== param(req, "restaurantId")) {
+        return res.status(404).json({ error: "Not found" });
+      }
       res.json({
         customer,
         _lgpd: "Full data export per LGPD Art. 18 — direito de acesso",
@@ -118,7 +122,9 @@ router.patch(
         return res.status(400).json({ error: "lifecycleStatus must be 'active' or 'inactive'" });
       }
       const customer = await customerRepository.findById(customerId);
-      if (!customer) return res.status(404).json({ error: "Not found" });
+      if (!customer || customer.restaurantId !== param(req, "restaurantId")) {
+        return res.status(404).json({ error: "Not found" });
+      }
 
       const updated = await customerRepository.updateFlags(customerId, { lifecycleStatus });
       res.json(updated);
@@ -144,7 +150,9 @@ router.patch(
         return res.status(400).json({ error: "amount must be a non-negative number" });
       }
       const customer = await customerRepository.findById(customerId);
-      if (!customer) return res.status(404).json({ error: "Not found" });
+      if (!customer || customer.restaurantId !== param(req, "restaurantId")) {
+        return res.status(404).json({ error: "Not found" });
+      }
 
       // Update lastVisitAmount and recalculate totalSpent
       // Find the last event and update its amount too
@@ -156,20 +164,23 @@ router.patch(
       if (lastEvent) {
         const oldAmount = lastEvent.amount ?? 0;
         const diff = amount - oldAmount;
-        await prisma.customerEvent.update({
-          where: { id: lastEvent.id },
-          data: { amount },
-        });
-        await prisma.customer.update({
-          where: { id: customerId },
-          data: {
-            lastVisitAmount: amount,
-            totalSpent: Math.max(0, customer.totalSpent + diff),
-            avgTicket: customer.totalVisits > 0
-              ? Math.round(((customer.totalSpent + diff) / customer.totalVisits) * 100) / 100
-              : 0,
-          },
-        });
+        // Atomic: update event + customer metrics in one transaction
+        await prisma.$transaction([
+          prisma.customerEvent.update({
+            where: { id: lastEvent.id },
+            data: { amount },
+          }),
+          prisma.customer.update({
+            where: { id: customerId },
+            data: {
+              lastVisitAmount: amount,
+              totalSpent: Math.max(0, (customer.totalSpent ?? 0) + diff),
+              avgTicket: customer.totalVisits > 0
+                ? Math.round((((customer.totalSpent ?? 0) + diff) / customer.totalVisits) * 100) / 100
+                : 0,
+            },
+          }),
+        ]);
       } else {
         await prisma.customer.update({
           where: { id: customerId },
@@ -203,7 +214,9 @@ router.delete(
       const customer = await prisma.customer.findUnique({
         where: { id: customerId },
       });
-      if (!customer) return res.status(404).json({ error: "Not found" });
+      if (!customer || customer.restaurantId !== param(req, "restaurantId")) {
+        return res.status(404).json({ error: "Not found" });
+      }
 
       // Soft-delete: anonymize PII + set deletedAt
       await prisma.customer.update({

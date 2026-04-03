@@ -8,6 +8,7 @@ import { generateLayout } from "../services/layoutGenerator.service";
 import { signJwt } from "../middleware/jwtAuth";
 import { validate } from "../middleware/validate";
 import { createRestaurantSchema } from "../schemas";
+import { normalizePhone } from "../shared/phone";
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.post("/check-duplicate", async (req: Request, res: Response) => {
   const { phone, email } = req.body;
 
   if (phone) {
-    const normalized = phone.trim().startsWith('+') ? phone.trim() : `+55${phone.trim()}`;
+    const normalized = normalizePhone(phone);
     const existing = await prisma.restaurant.findFirst({ where: { phone: normalized } });
     if (existing) {
       return res.json({ exists: true, field: "phone", message: "Este número de WhatsApp já está cadastrado." });
@@ -33,15 +34,31 @@ router.post("/check-duplicate", async (req: Request, res: Response) => {
   res.json({ exists: false });
 });
 
-router.get("/", async (_req: Request, res: Response) => {
-  const restaurants = await restaurantRepository.findAll();
-  res.json(restaurants);
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    // Scope to authenticated user's restaurant only
+    const user = (req as any).user;
+    if (user?.restaurantId) {
+      const restaurant = await restaurantRepository.findById(user.restaurantId);
+      return res.json(restaurant ? [restaurant] : []);
+    }
+    const restaurants = await restaurantRepository.findAll();
+    res.json(restaurants);
+  } catch (err) {
+    console.error('[Route] Error:', err);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
 });
 
 router.get("/:id", async (req: Request, res: Response) => {
-  const restaurant = await restaurantRepository.findById(param(req, "id"));
-  if (!restaurant) return res.status(404).json({ error: "Not found" });
-  res.json(restaurant);
+  try {
+    const restaurant = await restaurantRepository.findById(param(req, "id"));
+    if (!restaurant) return res.status(404).json({ error: "Not found" });
+    res.json(restaurant);
+  } catch (err) {
+    console.error('[Route] Error:', err);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
 });
 
 router.post("/", validate(createRestaurantSchema), async (req: Request, res: Response) => {
@@ -60,7 +77,7 @@ router.post("/", validate(createRestaurantSchema), async (req: Request, res: Res
 
   // Check for duplicate phone
   if (phone) {
-    const normalizedPhone = phone.trim().startsWith('+') ? phone.trim() : `+55${phone.trim()}`;
+    const normalizedPhone = normalizePhone(phone);
     const existingRestaurant = await prisma.restaurant.findFirst({
       where: { phone: normalizedPhone },
     });
@@ -177,20 +194,21 @@ router.post("/:restaurantId/tables", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "tables array is required" });
   }
 
-  await prisma.restaurantTable.deleteMany({ where: { restaurantId } });
-
-  await prisma.restaurantTable.createMany({
-    data: tables.map((t: any) => ({
-      restaurantId,
-      tableNumber: t.tableNumber,
-      seats: t.seats,
-      label: t.label ?? null,
-      posX: t.posX ?? null,
-      posY: t.posY ?? null,
-      width: t.width ?? null,
-      height: t.height ?? null,
-    })),
-  });
+  await prisma.$transaction([
+    prisma.restaurantTable.deleteMany({ where: { restaurantId } }),
+    prisma.restaurantTable.createMany({
+      data: tables.map((t: any) => ({
+        restaurantId,
+        tableNumber: t.tableNumber,
+        seats: t.seats,
+        label: t.label ?? null,
+        posX: t.posX ?? null,
+        posY: t.posY ?? null,
+        width: t.width ?? null,
+        height: t.height ?? null,
+      })),
+    }),
+  ]);
 
   const result = await prisma.restaurantTable.findMany({
     where: { restaurantId },
@@ -201,20 +219,31 @@ router.post("/:restaurantId/tables", async (req: Request, res: Response) => {
 
 // Update single table (position, size, seats, label, etc.)
 router.patch("/:restaurantId/tables/:tableId", async (req: Request, res: Response) => {
-  const { posX, posY, width, height, label, seats, tableNumber } = req.body;
-  const updated = await prisma.restaurantTable.update({
-    where: { id: param(req, "tableId") },
-    data: {
-      ...(posX != null && { posX: Number(posX) }),
-      ...(posY != null && { posY: Number(posY) }),
-      ...(width != null && { width: Number(width) }),
-      ...(height != null && { height: Number(height) }),
-      ...(label !== undefined && { label }),
-      ...(seats != null && { seats: Number(seats) }),
-      ...(tableNumber != null && { tableNumber: Number(tableNumber) }),
-    },
-  });
-  res.json(updated);
+  try {
+    const restaurantId = param(req, "restaurantId");
+    const tableId = param(req, "tableId");
+    const table = await prisma.restaurantTable.findUnique({ where: { id: tableId }, select: { restaurantId: true } });
+    if (!table || table.restaurantId !== restaurantId) {
+      return res.status(404).json({ error: "Table not found" });
+    }
+    const { posX, posY, width, height, label, seats, tableNumber } = req.body;
+    const updated = await prisma.restaurantTable.update({
+      where: { id: tableId },
+      data: {
+        ...(posX != null && { posX: Number(posX) }),
+        ...(posY != null && { posY: Number(posY) }),
+        ...(width != null && { width: Number(width) }),
+        ...(height != null && { height: Number(height) }),
+        ...(label !== undefined && { label }),
+        ...(seats != null && { seats: Number(seats) }),
+        ...(tableNumber != null && { tableNumber: Number(tableNumber) }),
+      },
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error('[Route] Error:', err);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
 });
 
 // Add single table — finds first available number (fills gaps)
@@ -255,22 +284,41 @@ router.delete("/:restaurantId/tables", async (req: Request, res: Response) => {
 });
 
 router.delete("/:restaurantId/tables/:tableId", async (req: Request, res: Response) => {
-  await prisma.restaurantTable.delete({
-    where: { id: param(req, "tableId") },
-  });
-  res.sendStatus(204);
+  try {
+    const restaurantId = param(req, "restaurantId");
+    const tableId = param(req, "tableId");
+    const table = await prisma.restaurantTable.findUnique({ where: { id: tableId }, select: { restaurantId: true } });
+    if (!table || table.restaurantId !== restaurantId) {
+      return res.status(404).json({ error: "Table not found" });
+    }
+    await prisma.restaurantTable.delete({ where: { id: tableId } });
+    res.sendStatus(204);
+  } catch (err) {
+    console.error('[Route] Error:', err);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
 });
 
-// AI-generate restaurant layout from description (max 5/month)
+// AI-generate restaurant layout from description (max 5/month, persisted in DB)
 const AI_GENERATE_LIMIT = 5;
-const aiGenerateUsage = new Map<string, { count: number; month: string }>();
+
+async function getAiGenerateCount(restaurantId: string): Promise<{ count: number; month: string }> {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { roomLayout: true },
+  });
+  const layout = restaurant?.roomLayout as any;
+  if (layout?.aiGenMonth === currentMonth) {
+    return { count: layout.aiGenCount ?? 0, month: currentMonth };
+  }
+  return { count: 0, month: currentMonth };
+}
 
 router.get("/:restaurantId/tables/generate-usage", async (req: Request, res: Response) => {
   const restaurantId = param(req, "restaurantId");
-  const currentMonth = new Date().toISOString().slice(0, 7); // "2026-03"
-  const usage = aiGenerateUsage.get(restaurantId);
-  const used = (usage && usage.month === currentMonth) ? usage.count : 0;
-  res.json({ used, limit: AI_GENERATE_LIMIT, remaining: AI_GENERATE_LIMIT - used });
+  const { count } = await getAiGenerateCount(restaurantId);
+  res.json({ used: count, limit: AI_GENERATE_LIMIT, remaining: AI_GENERATE_LIMIT - count });
 });
 
 router.post("/:restaurantId/tables/generate", async (req: Request, res: Response) => {
@@ -281,10 +329,9 @@ router.post("/:restaurantId/tables/generate", async (req: Request, res: Response
     return res.status(400).json({ error: "description is required" });
   }
 
-  // Rate limit: 5 per month per restaurant
+  // Rate limit: 5 per month per restaurant (persisted in DB)
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const usage = aiGenerateUsage.get(restaurantId);
-  const currentCount = (usage && usage.month === currentMonth) ? usage.count : 0;
+  const { count: currentCount } = await getAiGenerateCount(restaurantId);
   if (currentCount >= AI_GENERATE_LIMIT) {
     return res.status(429).json({
       error: `Limite de ${AI_GENERATE_LIMIT} geracoes por mes atingido. Tente novamente no proximo mes.`,
@@ -296,29 +343,35 @@ router.post("/:restaurantId/tables/generate", async (req: Request, res: Response
   try {
     const layout = await generateLayout(description);
 
-    // Increment usage
-    aiGenerateUsage.set(restaurantId, { count: currentCount + 1, month: currentMonth });
-
-    // Save room layout metadata on restaurant
+    // Save room layout metadata + generation counter on restaurant
     await prisma.restaurant.update({
       where: { id: restaurantId },
-      data: { roomLayout: { roomShape: layout.roomShape, roomDescription: layout.roomDescription } },
+      data: {
+        roomLayout: {
+          roomShape: layout.roomShape,
+          roomDescription: layout.roomDescription,
+          aiGenCount: currentCount + 1,
+          aiGenMonth: currentMonth,
+        },
+      },
     });
 
-    // Replace tables
-    await prisma.restaurantTable.deleteMany({ where: { restaurantId } });
-    await prisma.restaurantTable.createMany({
-      data: layout.tables.map((t) => ({
-        restaurantId,
-        tableNumber: t.tableNumber,
-        seats: t.seats,
-        label: t.label ?? null,
-        posX: t.posX,
-        posY: t.posY,
-        width: t.width,
-        height: t.height,
-      })),
-    });
+    // Replace tables (atomic)
+    await prisma.$transaction([
+      prisma.restaurantTable.deleteMany({ where: { restaurantId } }),
+      prisma.restaurantTable.createMany({
+        data: layout.tables.map((t) => ({
+          restaurantId,
+          tableNumber: t.tableNumber,
+          seats: t.seats,
+          label: t.label ?? null,
+          posX: t.posX,
+          posY: t.posY,
+          width: t.width,
+          height: t.height,
+        })),
+      }),
+    ]);
 
     const tables = await prisma.restaurantTable.findMany({
       where: { restaurantId },
@@ -351,18 +404,19 @@ router.post("/:restaurantId/hours", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "hours array is required" });
   }
 
-  // Delete existing and recreate
-  await prisma.restaurantHours.deleteMany({ where: { restaurantId } });
-
-  const created = await prisma.restaurantHours.createMany({
-    data: hours.map((h: { dayOfWeek: number; openTime: string; closeTime: string; isClosed?: boolean }) => ({
-      restaurantId,
-      dayOfWeek: h.dayOfWeek,
-      openTime: h.openTime,
-      closeTime: h.closeTime,
-      isClosed: h.isClosed ?? false,
-    })),
-  });
+  // Delete existing and recreate (atomic)
+  await prisma.$transaction([
+    prisma.restaurantHours.deleteMany({ where: { restaurantId } }),
+    prisma.restaurantHours.createMany({
+      data: hours.map((h: { dayOfWeek: number; openTime: string; closeTime: string; isClosed?: boolean }) => ({
+        restaurantId,
+        dayOfWeek: h.dayOfWeek,
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+        isClosed: h.isClosed ?? false,
+      })),
+    }),
+  ]);
 
   const result = await prisma.restaurantHours.findMany({
     where: { restaurantId },

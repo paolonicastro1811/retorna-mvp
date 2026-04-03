@@ -13,6 +13,22 @@ import { checkCampaignLimits } from "../services/campaignLimits.service";
 
 const router = Router();
 
+/** Verify campaign belongs to the authenticated user's restaurant */
+async function verifyCampaignOwner(req: Request, res: Response): Promise<boolean> {
+  const user = (req as any).user;
+  if (!user?.restaurantId) { res.status(403).json({ error: "Forbidden" }); return false; }
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: param(req, "campaignId") },
+    select: { restaurantId: true },
+  });
+  if (!campaign) { res.status(404).json({ error: "Not found" }); return false; }
+  if (campaign.restaurantId !== user.restaurantId) {
+    res.status(403).json({ error: "Forbidden — you cannot access this campaign" });
+    return false;
+  }
+  return true;
+}
+
 // --- Templates ---
 
 router.get("/:restaurantId/templates", async (req: Request, res: Response) => {
@@ -52,7 +68,10 @@ router.patch("/:restaurantId/templates/:templateId", async (req: Request, res: R
 
     // post_visit_thanks is mandatory for Meta compliance — cannot be disabled
     const template = await prisma.messageTemplate.findUnique({ where: { id: param(req, "templateId") } });
-    if (template?.hsmTemplateName === "post_visit_thanks_v1" && !isActive) {
+    if (!template || template.restaurantId !== param(req, "restaurantId")) {
+      return res.status(404).json({ error: "Template nao encontrado" });
+    }
+    if (template.hsmTemplateName === "post_visit_thanks_v1" && !isActive) {
       return res.status(403).json({ error: "Template de consentimento é obrigatório e não pode ser desativado." });
     }
 
@@ -75,6 +94,15 @@ router.post("/:restaurantId/templates/custom", async (req: Request, res: Respons
     const { name, body } = req.body;
     if (!name || !body) return res.status(400).json({ error: "name and body are required" });
 
+    // Validate template name: 3-60 chars, alphanumeric + spaces/hyphens/underscores
+    const trimmedName = name.trim();
+    if (trimmedName.length < 3 || trimmedName.length > 60) {
+      return res.status(400).json({ error: "Nome do template deve ter entre 3 e 60 caracteres" });
+    }
+    if (!/^[\w\s\-áàãâéêíóôõúüçÁÀÃÂÉÊÍÓÔÕÚÜÇ]+$/.test(trimmedName)) {
+      return res.status(400).json({ error: "Nome do template contém caracteres inválidos" });
+    }
+
     // Check max custom templates (3 per restaurant)
     const existingCustom = await prisma.messageTemplate.count({
       where: { restaurantId, isCustom: true },
@@ -93,7 +121,7 @@ router.post("/:restaurantId/templates/custom", async (req: Request, res: Respons
       });
     }
 
-    // Create template in DB
+    // Create template in DB (AI review already passed at this point)
     const template = await prisma.messageTemplate.create({
       data: {
         restaurantId,
@@ -101,19 +129,13 @@ router.post("/:restaurantId/templates/custom", async (req: Request, res: Respons
         body,
         channel: "whatsapp",
         isCustom: true,
-        metaStatus: "ai_review",
+        metaStatus: "draft",
         isActive: false,
         aiReviewNotes: JSON.stringify(review),
       },
     });
 
-    // Update status to passed AI review
-    await prisma.messageTemplate.update({
-      where: { id: template.id },
-      data: { metaStatus: "draft" },
-    });
-
-    res.status(201).json({ template: { ...template, metaStatus: "draft" }, review });
+    res.status(201).json({ template, review });
   } catch (err) {
     console.error("[Route] Error:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
@@ -141,7 +163,9 @@ router.post("/:restaurantId/templates/:templateId/submit-to-meta", async (req: R
     const templateId = param(req, "templateId");
 
     const template = await prisma.messageTemplate.findUnique({ where: { id: templateId } });
-    if (!template) return res.status(404).json({ error: "Template nao encontrado" });
+    if (!template || template.restaurantId !== param(req, "restaurantId")) {
+      return res.status(404).json({ error: "Template nao encontrado" });
+    }
     if (!template.isCustom) return res.status(400).json({ error: "Apenas templates custom podem ser enviados para Meta" });
     if (template.metaStatus === "submitted") return res.status(400).json({ error: "Template ja esta em revisao pela Meta" });
     if (template.metaStatus === "approved") return res.status(400).json({ error: "Template ja esta aprovado" });
@@ -166,7 +190,9 @@ router.delete("/:restaurantId/templates/:templateId", async (req: Request, res: 
   try {
     const templateId = param(req, "templateId");
     const template = await prisma.messageTemplate.findUnique({ where: { id: templateId } });
-    if (!template) return res.status(404).json({ error: "Template nao encontrado" });
+    if (!template || template.restaurantId !== param(req, "restaurantId")) {
+      return res.status(404).json({ error: "Template nao encontrado" });
+    }
     if (!template.isCustom) return res.status(400).json({ error: "Templates padrao nao podem ser deletados" });
 
     // If submitted to Meta, delete from Meta first
@@ -231,6 +257,7 @@ router.post("/:restaurantId/campaigns", validate(createCampaignSchema), async (r
 
 router.get("/campaigns/:campaignId", async (req: Request, res: Response) => {
   try {
+    if (!await verifyCampaignOwner(req, res)) return;
     const campaign = await campaignService.findById(param(req, "campaignId"));
     if (!campaign) return res.status(404).json({ error: "Not found" });
     res.json(campaign);
@@ -242,6 +269,7 @@ router.get("/campaigns/:campaignId", async (req: Request, res: Response) => {
 
 router.post("/campaigns/:campaignId/build", async (req: Request, res: Response) => {
   try {
+    if (!await verifyCampaignOwner(req, res)) return;
     const result = await campaignService.buildAudience(param(req, "campaignId"));
     res.json(result);
   } catch (err) {
@@ -251,6 +279,7 @@ router.post("/campaigns/:campaignId/build", async (req: Request, res: Response) 
 
 router.post("/campaigns/:campaignId/queue", async (req: Request, res: Response) => {
   try {
+    if (!await verifyCampaignOwner(req, res)) return;
     const result = await messagingService.queueMessages(param(req, "campaignId"));
     res.json(result);
   } catch (err) {
@@ -260,6 +289,7 @@ router.post("/campaigns/:campaignId/queue", async (req: Request, res: Response) 
 
 router.post("/campaigns/:campaignId/dispatch", async (req: Request, res: Response) => {
   try {
+    if (!await verifyCampaignOwner(req, res)) return;
     // Check if campaign uses a custom template → enforce limits
     const campaign = await prisma.campaign.findUnique({
       where: { id: param(req, "campaignId") },
@@ -282,6 +312,7 @@ router.post("/campaigns/:campaignId/dispatch", async (req: Request, res: Respons
 
 router.get("/campaigns/:campaignId/messages", async (req: Request, res: Response) => {
   try {
+    if (!await verifyCampaignOwner(req, res)) return;
     const messages = await outboundMessageRepository.findByCampaign(
       param(req, "campaignId")
     );
@@ -294,6 +325,7 @@ router.get("/campaigns/:campaignId/messages", async (req: Request, res: Response
 
 router.get("/campaigns/:campaignId/stats", async (req: Request, res: Response) => {
   try {
+    if (!await verifyCampaignOwner(req, res)) return;
     const stats = await outboundMessageRepository.countByCampaignAndStatus(
       param(req, "campaignId")
     );

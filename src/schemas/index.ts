@@ -11,7 +11,13 @@ export const createCampaignSchema = z.object({
 });
 
 export const recordVisitSchema = z.object({
-  phone: z.string().min(8, 'Telefone deve ter no minimo 8 caracteres').max(20, 'Telefone deve ter no maximo 20 caracteres'),
+  phone: z.string()
+    .min(10, 'Telefone deve ter no minimo 10 digitos')
+    .max(20, 'Telefone deve ter no maximo 20 caracteres')
+    .refine(
+      (p) => /^[\d+\-() ]{10,20}$/.test(p),
+      'Formato de telefone invalido'
+    ),
   customerName: z.string().optional(),
   spendAmount: z.number().min(0, 'Valor deve ser positivo').optional(),
 });

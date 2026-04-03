@@ -92,7 +92,7 @@ router.post('/connect', async (req: Request, res: Response) => {
         { headers: { Authorization: `Bearer ${FB_APP_ID}|${FB_APP_SECRET}` } }
       );
       const debugData = await debugRes.json() as any;
-      console.log('[WhatsApp Connect] Debug token:', JSON.stringify(debugData, null, 2));
+      console.log('[WhatsApp Connect] Debug token: scopes received, app_id=' + (debugData?.data?.app_id ?? 'unknown'));
 
       // Extract shared WABA from granular_scopes
       const scopes = debugData?.data?.granular_scopes || [];
@@ -118,7 +118,7 @@ router.post('/connect', async (req: Request, res: Response) => {
             { headers: { Authorization: `Bearer ${accessToken}` } }
           );
           const wabaData = await wabaRes.json() as any;
-          console.log('[WhatsApp Connect] WABAs:', JSON.stringify(wabaData, null, 2));
+          console.log(`[WhatsApp Connect] WABAs found: ${wabaData?.data?.length ?? 0}`);
           waba_id = wabaData.data?.[0]?.id || '';
         }
       }

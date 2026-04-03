@@ -49,8 +49,15 @@ export function OnboardingPage() {
     setHours(hours.map((h, idx) => idx === i ? { ...h, [field]: val } : h))
   }
 
+  const isPasswordValid = (pw: string) =>
+    pw.length >= 10 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /\d/.test(pw)
+
   const handleSubmit = async () => {
     if (!name.trim() || !phone.trim() || !plan || !email.trim() || !password.trim()) return
+    if (!isPasswordValid(password)) {
+      setError('Senha deve ter no mínimo 10 caracteres com maiúscula, minúscula e número')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -205,7 +212,7 @@ export function OnboardingPage() {
                   body: JSON.stringify({ phone: fullPhone }),
                 })
                 if (res.exists) {
-                  setError(res.message + ' Faça login para acessar seu painel.')
+                  setError((res.message || 'Este telefone já está cadastrado.') + ' Faça login para acessar seu painel.')
                   return
                 }
                 setStep(2)
@@ -437,7 +444,7 @@ export function OnboardingPage() {
             </div>
             <div className="mt-3">
               <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Crie uma senha</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 10 caracteres (maiúscula, minúscula, número)"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
             </div>
 
@@ -457,7 +464,7 @@ export function OnboardingPage() {
                 className="flex-1 border border-gray-300 text-[#2d2d3a] py-3 rounded-lg font-semibold text-sm hover:bg-gray-50">
                 Voltar
               </button>
-              <button onClick={handleSubmit} disabled={submitting || !email.trim() || password.length < 6}
+              <button onClick={handleSubmit} disabled={submitting || !email.trim() || password.length < 10}
                 className="flex-1 bg-[#25D366] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
                 {submitting ? 'Ativando...' : 'Ativar restaurante'}
               </button>
@@ -475,7 +482,7 @@ export function OnboardingPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#2d2d3a] mb-1.5">Crie uma senha</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres"
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 10 caracteres (maiúscula, minúscula, número)"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]" />
             </div>
             <div className="bg-green-50 border border-green-200 rounded-xl p-6">
@@ -503,7 +510,7 @@ export function OnboardingPage() {
                 className="flex-1 border border-gray-300 text-[#2d2d3a] py-3 rounded-lg font-semibold text-sm hover:bg-gray-50">
                 Voltar
               </button>
-              <button onClick={handleSubmit} disabled={submitting || !email.trim() || password.length < 6}
+              <button onClick={handleSubmit} disabled={submitting || !email.trim() || password.length < 10}
                 className="flex-1 bg-[#25D366] text-white py-3 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
                 {submitting ? 'Ativando...' : 'Ativar restaurante'}
               </button>

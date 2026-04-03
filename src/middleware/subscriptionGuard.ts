@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../database/client";
 
 /**
  * Middleware that checks if the restaurant has an active subscription or is within trial period.
@@ -21,6 +19,7 @@ export async function subscriptionGuard(
       subscriptionStatus: true,
       trialStartDate: true,
       trialDays: true,
+      timezone: true,
     },
   });
 
@@ -29,20 +28,30 @@ export async function subscriptionGuard(
   // Active subscription — always allow
   if (restaurant.subscriptionStatus === "active") return next();
 
-  // Check trial period
+  // Check trial period using restaurant timezone
   if (restaurant.subscriptionStatus === "trialing" && restaurant.trialStartDate) {
     const trialEnd = new Date(restaurant.trialStartDate);
     trialEnd.setDate(trialEnd.getDate() + restaurant.trialDays);
 
-    if (new Date() < trialEnd) {
+    // Get current date in restaurant timezone for fair comparison
+    const tz = restaurant.timezone || "America/Sao_Paulo";
+    const nowInTz = new Date(
+      new Date().toLocaleString("en-US", { timeZone: tz })
+    );
+
+    if (nowInTz < trialEnd) {
       return next(); // Still within trial
     }
 
     // Trial expired — update status
-    await prisma.restaurant.update({
-      where: { id: user.restaurantId },
-      data: { subscriptionStatus: "expired" },
-    });
+    try {
+      await prisma.restaurant.update({
+        where: { id: user.restaurantId },
+        data: { subscriptionStatus: "expired" },
+      });
+    } catch (err) {
+      console.error("[SubscriptionGuard] Failed to update expired status:", err);
+    }
   }
 
   // Subscription expired, past_due, or canceled

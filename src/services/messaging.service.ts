@@ -55,7 +55,10 @@ export const messagingService = {
     }));
 
     if (messages.length > 0) {
-      await outboundMessageRepository.createMany(messages);
+      // Transaction: create all messages atomically (no partial queue on failure)
+      await prisma.$transaction(async (tx) => {
+        await tx.outboundMessage.createMany({ data: messages });
+      });
     }
 
     return { queued: messages.length };
@@ -152,7 +155,14 @@ export const messagingService = {
    * Throttled: 50ms delay between messages to respect Meta rate limits.
    */
   async dispatchCampaign(campaignId: string) {
-    await campaignRepository.updateStatus(campaignId, CampaignStatus.SENDING);
+    // Atomic guard: only transition from READY → SENDING (prevents double-dispatch)
+    const updated = await prisma.campaign.updateMany({
+      where: { id: campaignId, status: CampaignStatus.READY },
+      data: { status: CampaignStatus.SENDING },
+    });
+    if (updated.count === 0) {
+      throw new Error("Campanha não está pronta ou já está sendo enviada.");
+    }
 
     const queued =
       await outboundMessageRepository.findQueuedByCampaign(campaignId);
@@ -160,10 +170,30 @@ export const messagingService = {
     let sent = 0;
     let failed = 0;
 
+    let consecutiveFailures = 0;
+
     for (let i = 0; i < queued.length; i++) {
       const result = await this.sendMessage(queued[i].id);
-      if (result.success) sent++;
-      else failed++;
+      if (result.success) {
+        sent++;
+        consecutiveFailures = 0;
+      } else {
+        failed++;
+        consecutiveFailures++;
+
+        // Exponential backoff on consecutive failures (max 30s)
+        if (consecutiveFailures >= 3) {
+          const backoffMs = Math.min(1000 * Math.pow(2, consecutiveFailures - 3), 30000);
+          console.warn(`[Dispatch] ${consecutiveFailures} consecutive failures — backing off ${backoffMs}ms`);
+          await new Promise((r) => setTimeout(r, backoffMs));
+        }
+
+        // Abort if too many consecutive failures (Meta likely rate-limiting)
+        if (consecutiveFailures >= 10) {
+          console.error(`[Dispatch] Aborting campaign ${campaignId} — 10 consecutive failures`);
+          break;
+        }
+      }
 
       // Throttle: 50ms between messages (~20 msg/sec, safe for all Meta tiers)
       if (i < queued.length - 1) {

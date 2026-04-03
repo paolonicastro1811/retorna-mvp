@@ -151,6 +151,7 @@ export function SettingsPage() {
   const [changingPlan, setChangingPlan] = useState(false)
 
   useEffect(() => {
+    if (!restaurantId) return
     Promise.all([
       api<Restaurant>(`/restaurants/${restaurantId}`),
       api<Hour[]>(`/restaurants/${restaurantId}/hours`),
@@ -176,7 +177,7 @@ export function SettingsPage() {
         }
       }))
     }).catch(console.error).finally(() => setLoading(false))
-  }, [])
+  }, [restaurantId])
 
   const handleSave = async () => {
     setSaving(true)
@@ -231,7 +232,10 @@ export function SettingsPage() {
       localStorage.setItem('restaurantPlan', newPlan)
       sessionStorage.setItem('settingsTab', '5')
       window.location.reload()
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+      alert('Erro ao alterar plano. Tente novamente.')
+    }
     finally { setChangingPlan(false) }
   }
 
@@ -460,9 +464,14 @@ export function SettingsPage() {
               className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Fuso horario</label>
-            <input type="text" value={timezone} onChange={e => setTimezone(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
+            <label className="block text-sm font-medium text-gray-600 mb-1">Fuso horário</label>
+            <select value={timezone} onChange={e => setTimezone(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent">
+              <option value="America/Sao_Paulo">Brasília (SP, RJ, MG, ES, BA, SE, AL, PE, PB, RN, CE, PI, MA, GO, DF, PR, SC, RS, MS, TO, AP) — UTC-3</option>
+              <option value="America/Manaus">Manaus (AM, RO, RR, MT) — UTC-4</option>
+              <option value="America/Rio_Branco">Rio Branco (AC) — UTC-5</option>
+              <option value="America/Noronha">Fernando de Noronha (PE) — UTC-2</option>
+            </select>
           </div>
           <button onClick={handleSave} disabled={saving || !name.trim()}
             className="w-full bg-[#25D366] text-white py-1.5 rounded-lg font-semibold text-sm hover:bg-[#1DA851] disabled:opacity-50 transition-colors">

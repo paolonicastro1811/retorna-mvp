@@ -78,9 +78,12 @@ router.get(
   "/:restaurantId/customers/:customerId/events",
   async (req: Request, res: Response) => {
     try {
-      const events = await customerEventRepository.findByCustomer(
-        param(req, "customerId")
-      );
+      const customerId = param(req, "customerId");
+      const customer = await prisma.customer.findUnique({ where: { id: customerId }, select: { restaurantId: true } });
+      if (!customer || customer.restaurantId !== param(req, "restaurantId")) {
+        return res.status(404).json({ error: "Not found" });
+      }
+      const events = await customerEventRepository.findByCustomer(customerId);
       res.json(events);
     } catch (err) {
       console.error('[Route] Error:', err);

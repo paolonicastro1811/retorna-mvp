@@ -1,8 +1,6 @@
 import { Router, Request, Response } from "express";
 import Stripe from "stripe";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../database/client";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
@@ -116,6 +114,7 @@ router.get("/status", async (req: Request, res: Response) => {
       trialStartDate: true,
       trialDays: true,
       stripeSubscriptionId: true,
+      timezone: true,
     },
   });
   if (!restaurant) {
@@ -128,9 +127,13 @@ router.get("/status", async (req: Request, res: Response) => {
   if (restaurant.trialStartDate) {
     trialEndsAt = new Date(restaurant.trialStartDate);
     trialEndsAt.setDate(trialEndsAt.getDate() + restaurant.trialDays);
+
+    // Use restaurant timezone for fair day calculation
+    const tz = restaurant.timezone || "America/Sao_Paulo";
+    const nowInTz = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
     trialDaysRemaining = Math.max(
       0,
-      Math.ceil((trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      Math.ceil((trialEndsAt.getTime() - nowInTz.getTime()) / (1000 * 60 * 60 * 24))
     );
   }
 
@@ -160,9 +163,23 @@ stripeWebhookRouter.post(
     const sig = req.headers["stripe-signature"] as string;
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
+    // Reject webhooks if signature verification is not configured in production
+    if (!endpointSecret) {
+      if (process.env.NODE_ENV === "production") {
+        console.error("FATAL: STRIPE_WEBHOOK_SECRET not set — rejecting webhook");
+        return res.status(500).json({ error: "Webhook signature secret not configured" });
+      }
+      console.warn("[Stripe] WARNING: STRIPE_WEBHOOK_SECRET not set — skipping signature verification in dev");
+    }
+
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      if (endpointSecret) {
+        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      } else {
+        // Dev only: parse raw body as event (no signature check)
+        event = JSON.parse(req.body.toString()) as Stripe.Event;
+      }
     } catch (err) {
       console.error("Stripe webhook signature verification failed:", err);
       return res.status(400).json({ error: "Webhook signature failed" });

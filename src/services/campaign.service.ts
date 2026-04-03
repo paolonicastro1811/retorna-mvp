@@ -41,7 +41,14 @@ export const campaignService = {
     const campaign = await campaignRepository.findById(campaignId);
     if (!campaign) throw new Error(`Campaign ${campaignId} not found`);
 
-    await campaignRepository.updateStatus(campaignId, CampaignStatus.BUILDING);
+    // Atomic guard: only transition from DRAFT → BUILDING (prevents double-build)
+    const updated = await prisma.campaign.updateMany({
+      where: { id: campaignId, status: CampaignStatus.DRAFT },
+      data: { status: CampaignStatus.BUILDING },
+    });
+    if (updated.count === 0) {
+      throw new Error("Campanha não está em rascunho ou já está sendo construída.");
+    }
 
     const rules = campaign.segmentRules as unknown as SegmentRules;
 
@@ -94,14 +101,19 @@ export const campaignService = {
         !recentRecipientIds.has(c.id) // Cooldown: no repeat within 7 days
     );
 
-    // Pulisci audience precedente e ricrea
-    await campaignAudienceItemRepository.deleteByCampaign(campaignId);
-    await campaignAudienceItemRepository.createMany(
-      campaignId,
-      customers.map((c) => c.id)
-    );
-
-    await campaignRepository.updateStatus(campaignId, CampaignStatus.READY);
+    // Atomic: delete old audience + create new + set READY in one transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.campaignAudienceItem.deleteMany({ where: { campaignId } });
+      if (customers.length > 0) {
+        await tx.campaignAudienceItem.createMany({
+          data: customers.map((c) => ({ campaignId, customerId: c.id })),
+        });
+      }
+      await tx.campaign.update({
+        where: { id: campaignId },
+        data: { status: CampaignStatus.READY },
+      });
+    });
 
     return { audienceSize: customers.length };
   },

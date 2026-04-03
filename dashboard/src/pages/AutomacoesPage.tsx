@@ -57,11 +57,12 @@ export function AutomacoesPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!restaurantId) return
     api<AutomationStats>(`/restaurants/${restaurantId}/automation-stats`)
       .then(setStats)
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [])
+  }, [restaurantId])
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">

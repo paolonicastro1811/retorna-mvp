@@ -74,8 +74,6 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json({ limit: "1mb" }));
-
 // --- Rate limiting ---
 const webhookLimiter = rateLimit({
   windowMs: 60 * 1000,  // 1 minuto
@@ -92,9 +90,17 @@ const apiLimiter = rateLimit({
   message: { error: "Too many requests" },
 });
 
-// --- Webhook routes (BEFORE helmet — helmet can interfere with webhook payloads) ---
-app.use("/webhooks/whatsapp", webhookLimiter, whatsappWebhookRouter);
+// --- Stripe webhook (BEFORE express.json — needs truly raw body for signature) ---
 app.use("/webhooks/stripe", express.raw({ type: "application/json" }), stripeWebhookRouter);
+
+// --- JSON parser (verify callback captures raw body for WhatsApp HMAC) ---
+app.use(express.json({
+  limit: "1mb",
+  verify: (req: any, _res, buf) => { req.rawBody = buf; },
+}));
+
+// --- WhatsApp webhook (AFTER express.json — needs parsed body + raw for HMAC) ---
+app.use("/webhooks/whatsapp", webhookLimiter, whatsappWebhookRouter);
 
 // --- Auth routes (public — no auth required) ---
 app.use("/auth", apiLimiter, authRouter);
@@ -298,14 +304,22 @@ cron.schedule("*/30 * * * *", async () => {
   }
 });
 
-// --- Manual trigger for loyalty automation (for testing) ---
-app.post("/jobs/loyalty-automation", authMiddleware, async (_req, res) => {
+// --- Manual trigger for loyalty automation (for testing — server-to-server only) ---
+app.post("/jobs/loyalty-automation", authMiddleware, async (req, res) => {
   try {
+    if ((req as any).user) {
+      return res.status(403).json({ error: "Global jobs are restricted to server-to-server API key auth" });
+    }
     const result = await runDailyAutomation();
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
+});
+
+// --- 404 handler (must be before error handler) ---
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: "Route not found" });
 });
 
 // --- Global error handler ---
@@ -315,10 +329,28 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // --- Start ---
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[Server] Retorna running on port ${PORT}`);
   console.log(`[Server] CORS: ${ALLOWED_ORIGINS.join(", ")}`);
   console.log(`[Server] Auth: JWT (Magic Link) + ${API_KEY ? "API key fallback" : "no API key (set API_KEY for server-to-server)"}`);
 });
+
+// --- Graceful shutdown ---
+async function shutdown(signal: string) {
+  console.log(`[Server] ${signal} received, shutting down gracefully...`);
+  server.close(async () => {
+    await prisma.$disconnect();
+    console.log("[Server] Prisma disconnected, exiting.");
+    process.exit(0);
+  });
+  // Force exit after 10s if graceful shutdown hangs
+  setTimeout(() => {
+    console.error("[Server] Forced exit after timeout");
+    process.exit(1);
+  }, 10_000);
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 export default app;

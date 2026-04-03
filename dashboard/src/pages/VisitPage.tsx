@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRestaurantId } from '../contexts/AuthContext'
 import { recordVisit } from '../api/visits'
 import { searchCustomers } from '../api/customers'
@@ -39,6 +39,10 @@ export function VisitPage() {
   const [showDropdown, setShowDropdown] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [])
+
   const doSearch = useCallback((q: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (q.length < 3) { setResults([]); setShowDropdown(false); return }
@@ -52,7 +56,7 @@ export function VisitPage() {
       } catch { setResults([]) }
       finally { setSearching(false) }
     }, 300)
-  }, [])
+  }, [restaurantId])
 
   const handlePhoneChange = (val: string) => {
     setPhone(val)

@@ -58,12 +58,11 @@ function getWeekDays(center: Date): Date[] {
   })
 }
 
-// Get current time in restaurant timezone (fetched from API, fallback to Sao Paulo)
-let RESTAURANT_TZ = 'America/Sao_Paulo'
-function getNowInRestaurantTz(): { hours: number; minutes: number; dateStr: string } {
+// Get current time in restaurant timezone
+function getNowInRestaurantTz(tz: string): { hours: number; minutes: number; dateStr: string } {
   const now = new Date()
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: RESTAURANT_TZ,
+    timeZone: tz,
     hour: 'numeric', minute: 'numeric', hour12: false,
     year: 'numeric', month: '2-digit', day: '2-digit',
   }).formatToParts(now)
@@ -82,6 +81,7 @@ export function BookingLeadsPage() {
   const [tables, setTables] = useState<Table[]>([])
   const [hours, setHours] = useState<Hour[]>([])
   const [loading, setLoading] = useState(true)
+  const [restaurantTz, setRestaurantTz] = useState('America/Sao_Paulo')
 
   // Edit reservation
   const [editId, setEditId] = useState<string | null>(null)
@@ -101,23 +101,23 @@ export function BookingLeadsPage() {
 
   // Live clock — uses restaurant timezone (Brazil), updates every 30s
   const [nowMinutes, setNowMinutes] = useState(() => {
-    const tz = getNowInRestaurantTz(); return tz.hours * 60 + tz.minutes
+    const t = getNowInRestaurantTz(restaurantTz); return t.hours * 60 + t.minutes
   })
-  const [todayInTz, setTodayInTz] = useState(() => getNowInRestaurantTz().dateStr)
+  const [todayInTz, setTodayInTz] = useState(() => getNowInRestaurantTz(restaurantTz).dateStr)
   useEffect(() => {
     const iv = setInterval(() => {
-      const tz = getNowInRestaurantTz()
-      setNowMinutes(tz.hours * 60 + tz.minutes)
-      setTodayInTz(tz.dateStr)
+      const t = getNowInRestaurantTz(restaurantTz)
+      setNowMinutes(t.hours * 60 + t.minutes)
+      setTodayInTz(t.dateStr)
     }, 30_000)
     return () => clearInterval(iv)
-  }, [])
+  }, [restaurantTz])
 
   const dateStr = toDateStr(selectedDate)
   // Use restaurant timezone for day-of-week
   const dayOfWeek = (() => {
     try {
-      const parts = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: RESTAURANT_TZ }).formatToParts(selectedDate)
+      const parts = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: restaurantTz }).formatToParts(selectedDate)
       const day = parts.find(p => p.type === 'weekday')?.value ?? ''
       const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
       return map[day] ?? selectedDate.getDay()
@@ -129,13 +129,15 @@ export function BookingLeadsPage() {
   const weekDays = useMemo(() => getWeekDays(selectedDate), [dateStr])
 
   const fetchReservations = useCallback(async () => {
+    if (!restaurantId) return
     try {
       const data = await api<Reservation[]>(`/restaurants/${restaurantId}/reservations?date=${dateStr}`)
       setReservations(data)
     } catch { setReservations([]) }
-  }, [dateStr])
+  }, [dateStr, restaurantId])
 
   useEffect(() => {
+    if (!restaurantId) return
     Promise.all([
       api<Table[]>(`/restaurants/${restaurantId}/tables`),
       api<Hour[]>(`/restaurants/${restaurantId}/hours`),
@@ -143,9 +145,9 @@ export function BookingLeadsPage() {
     ]).then(([t, h, r]) => {
       setTables(t)
       setHours(h)
-      if (r.timezone) RESTAURANT_TZ = r.timezone
+      if (r.timezone) setRestaurantTz(r.timezone)
     }).catch(console.error).finally(() => setLoading(false))
-  }, [])
+  }, [restaurantId])
 
   useEffect(() => {
     if (!loading) fetchReservations()
@@ -506,7 +508,7 @@ export function BookingLeadsPage() {
                           {isEditingSlot && isBooked && res && (
                             <div className="mt-1 p-2 bg-red-50/50 border border-red-200 rounded-lg space-y-1.5">
                               <div className="space-y-0.5">
-                                <p className="text-base font-semibold text-gray-800">{res.customerName || 'Sem nome'}</p>
+                                <p className="text-base font-semibold text-gray-800 truncate max-w-[200px]" title={res.customerName || ''}>{res.customerName || 'Sem nome'}</p>
                                 <p className="text-sm text-gray-500">{res.phone}</p>
                                 <p className="text-sm text-gray-500">{res.partySize} pessoa{res.partySize > 1 ? 's' : ''} · {STATUS_MAP[res.status]?.label}</p>
                                 {res.notes && <p className="text-sm text-gray-400 italic">{res.notes}</p>}

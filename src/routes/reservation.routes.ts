@@ -64,8 +64,8 @@ router.get("/:restaurantId/reservations", async (req: Request, res: Response) =>
 
     const where: any = { restaurantId };
     if (dateStr) {
-      // Parse without "Z" — treat as local time (server / restaurant timezone)
-      const d = new Date(dateStr + "T00:00:00");
+      // Parse as UTC midnight — @db.Date fields are stored date-only (no timezone)
+      const d = new Date(dateStr + "T00:00:00Z");
       if (isNaN(d.getTime())) return res.status(400).json({ error: "Invalid date" });
       const next = new Date(d);
       next.setDate(next.getDate() + 1);
@@ -225,7 +225,7 @@ router.patch("/:restaurantId/reservations/:reservationId", async (req: Request, 
       data.status = status;
       // Record timestamp when customer sits down
       if (status === "seated") { data.seatedAt = new Date(); }
-      else if (status && status !== "seated") { data.seatedAt = null; }
+      else if (status === "pending" || status === "cancelled") { data.seatedAt = null; }
       // Don't touch seatedAt if status is not provided
     }
     if (tableId !== undefined) data.tableId = tableId || null;

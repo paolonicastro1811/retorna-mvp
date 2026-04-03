@@ -25,11 +25,12 @@ export function CustomersPage() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (!restaurantId) return
     getCustomers(restaurantId)
       .then(setCustomers)
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [])
+  }, [restaurantId])
 
   const handleToggleStatus = (customer: Customer) => {
     if (customer.lifecycleStatus === 'inactive') {
@@ -71,6 +72,9 @@ export function CustomersPage() {
       cancelEdit()
       return
     }
+    // Clear editing state immediately to prevent double-fire from onBlur+onKeyDown
+    setEditingId(null)
+    setEditValue('')
     setSaving(true)
     try {
       const updated = await updateLastVisitAmount(restaurantId, customerId, amount)
@@ -84,8 +88,6 @@ export function CustomersPage() {
       console.error(e)
     } finally {
       setSaving(false)
-      setEditingId(null)
-      setEditValue('')
     }
   }
 
@@ -144,7 +146,7 @@ export function CustomersPage() {
             <tbody className="divide-y divide-gray-50">
               {filtered.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 font-medium text-gray-900">{c.name ?? '—'}</td>
+                  <td className="px-4 py-2 font-medium text-gray-900 max-w-[200px] truncate" title={c.name ?? ''}>{c.name ?? '—'}</td>
                   <td className="px-4 py-2 text-gray-600">{c.phone}</td>
                   <td className="px-4 py-2">
                     <button

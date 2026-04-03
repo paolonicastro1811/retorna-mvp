@@ -45,9 +45,8 @@ export async function onVisitRegistered(customerId: string) {
   if (!c.marketingOptInAt || c.contactableStatus !== "contactable") return;
 
   // --- 1. Calculate new tier ---
-  // The visit has already been recorded before onVisitRegistered is called,
-  // so c.totalVisits is stale (off-by-one). Use +1 to reflect the current visit.
-  const currentVisits = c.totalVisits + 1;
+  // recordVisit → updateCustomerMetrics already updated totalVisits before this runs
+  const currentVisits = c.totalVisits;
   const oldTier = c.tier as Tier;
   let newTier: Tier = "novo";
   if (currentVisits >= r.tierOuroMinVisits) newTier = "ouro";
@@ -72,7 +71,7 @@ export async function onVisitRegistered(customerId: string) {
   let triggerSurprise = false;
   let newNextSurpriseAt = c.nextSurpriseAt;
 
-  if (newSurpriseCounter >= c.nextSurpriseAt) {
+  if (newSurpriseCounter > c.nextSurpriseAt) {
     triggerSurprise = true;
     newSurpriseCounter = 0;
     // Random next threshold between min and max
@@ -181,6 +180,7 @@ export async function runDailyAutomation() {
         contactableStatus: "contactable",
         whatsappOptInStatus: "granted",
         totalVisits: { gte: 1 },
+        tier: { not: "novo" },
         lastVisitAt: { lte: cutoffDate },
         // Not already reactivated recently (cooldown 30 days)
         OR: [

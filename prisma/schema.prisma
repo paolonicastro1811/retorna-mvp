@@ -142,6 +142,7 @@ model Customer {
   @@index([restaurantId, isFrequent])
   @@index([restaurantId, isHighSpender])
   @@index([restaurantId, whatsappOptInStatus])
+  @@index([restaurantId, deletedAt])
   @@map("customers")
 }
 
@@ -336,6 +337,7 @@ model Reservation {
   @@index([restaurantId, date])
   @@index([restaurantId, status])
   @@index([customerId])
+  @@index([tableId, date])
   @@map("reservations")
 }
 

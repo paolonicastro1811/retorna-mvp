@@ -62,6 +62,7 @@ export function TableMapEditor() {
   const [aiUsage, setAiUsage] = useState({ used: 0, limit: 5, remaining: 5 })
 
   useEffect(() => {
+    if (!restaurantId) return
     Promise.all([
       api<TableData[]>(`/restaurants/${restaurantId}/tables`),
       api<{ used: number; limit: number; remaining: number }>(`/restaurants/${restaurantId}/tables/generate-usage`),
@@ -73,7 +74,7 @@ export function TableMapEditor() {
       })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [])
+  }, [restaurantId])
 
   // ── AI Generate ──
   const handleGenerate = async () => {
