@@ -113,6 +113,8 @@ export function SettingsPage() {
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [originalPhone, setOriginalPhone] = useState('')
+  const [phoneEditing, setPhoneEditing] = useState(false)
   const [timezone, setTimezone] = useState('')
 
   // Hours (Plan B)
@@ -161,6 +163,7 @@ export function SettingsPage() {
       setRestaurant(r)
       setName(r.name)
       setPhone(r.phone ?? '')
+      setOriginalPhone(r.phone ?? '')
       setTimezone(r.timezone)
       setMealDuration(r.avgMealDurationMinutes ?? 90)
       setHours(h)
@@ -180,13 +183,25 @@ export function SettingsPage() {
   }, [restaurantId])
 
   const handleSave = async () => {
+    const fullPhone = phone.trim().startsWith('+') ? phone.trim() : phone.trim() ? `+55${phone.trim()}` : ''
+    const phoneChanged = fullPhone !== originalPhone && originalPhone !== ''
+
+    if (phoneChanged) {
+      const confirmed = window.confirm(
+        '⚠️ Atenção: ao alterar o número de WhatsApp, a conexão atual será desconectada e todos os dados de mensagens associados ao número anterior serão perdidos.\n\nDeseja continuar?'
+      )
+      if (!confirmed) return
+    }
+
     setSaving(true)
     setSaved(false)
     try {
       await api(`/restaurants/${restaurantId}`, {
         method: 'PUT',
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim() || undefined, timezone: timezone.trim() }),
+        body: JSON.stringify({ name: name.trim(), phone: fullPhone || undefined, timezone: timezone.trim() }),
       })
+      setOriginalPhone(fullPhone)
+      setPhoneEditing(false)
       setSaved(true)
     } catch (e) { console.error(e) }
     finally { setSaving(false) }
@@ -460,8 +475,28 @@ export function SettingsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Telefone WhatsApp</label>
-            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+5511999999999"
-              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
+            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 border-r-0 rounded-l-lg px-2.5 py-1.5 text-sm text-gray-600 select-none">
+                <span>🇧🇷</span><span>+55</span>
+              </div>
+              {phoneEditing ? (
+                <input type="tel" value={phone.replace(/^\+55/, '')} onChange={e => setPhone(e.target.value.replace(/\D/g, ''))} placeholder="11999999999"
+                  className="flex-1 border border-gray-200 rounded-r-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent" />
+              ) : (
+                <div className="flex-1 border border-gray-200 rounded-r-lg px-2.5 py-1.5 text-sm bg-gray-50 text-gray-700">
+                  {phone.replace(/^\+55/, '') || '—'}
+                </div>
+              )}
+              <button type="button" onClick={() => {
+                if (phoneEditing) { setPhone(originalPhone); setPhoneEditing(false) }
+                else setPhoneEditing(true)
+              }} className="text-xs text-gray-400 hover:text-gray-600 ml-1">
+                {phoneEditing ? 'Cancelar' : 'Alterar'}
+              </button>
+            </div>
+            {phoneEditing && (
+              <p className="text-xs text-amber-600 mt-1">⚠️ Alterar o número desconecta o WhatsApp e dados associados serão perdidos.</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Fuso horário</label>
