@@ -36,8 +36,7 @@ export default function App() {
           <Route path="/painel" element={
             <ProtectedRoute><Layout /></ProtectedRoute>
           }>
-            <Route index element={<CustomersPage />} />
-            <Route path="visita" element={<VisitPage />} />
+            <Route index element={<AutomacoesPage />} />
             <Route path="campanhas" element={<AutomacoesPage />} />
 
             <Route path="leads" element={<BookingLeadsPage />} />

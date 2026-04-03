@@ -59,9 +59,7 @@ const CloseIcon = () => (
 )
 
 const links = [
-  { to: '/painel', label: 'Clientes', planB: false },
-  { to: '/painel/visita', label: 'Registrar Visita', planB: false },
-  { to: '/painel/campanhas', label: 'Automações', planB: false },
+  { to: '/painel', label: 'Painel', planB: false },
   { to: '/painel/leads', label: 'Reservas', planB: true },
   { to: '/painel/sala-ao-vivo', label: 'Sala ao Vivo', planB: true },
 ]
