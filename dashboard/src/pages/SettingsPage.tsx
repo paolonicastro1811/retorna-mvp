@@ -467,10 +467,10 @@ export function SettingsPage() {
             <label className="block text-sm font-medium text-gray-600 mb-1">Fuso horário</label>
             <select value={timezone} onChange={e => setTimezone(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:border-transparent">
-              <option value="America/Sao_Paulo">Brasília (SP, RJ, MG, ES, BA, SE, AL, PE, PB, RN, CE, PI, MA, GO, DF, PR, SC, RS, MS, TO, AP) — UTC-3</option>
-              <option value="America/Manaus">Manaus (AM, RO, RR, MT) — UTC-4</option>
-              <option value="America/Rio_Branco">Rio Branco (AC) — UTC-5</option>
-              <option value="America/Noronha">Fernando de Noronha (PE) — UTC-2</option>
+              <option value="America/Sao_Paulo">Brasília — UTC-3</option>
+              <option value="America/Manaus">Manaus — UTC-4</option>
+              <option value="America/Rio_Branco">Rio Branco — UTC-5</option>
+              <option value="America/Noronha">Noronha — UTC-2</option>
             </select>
           </div>
           <button onClick={handleSave} disabled={saving || !name.trim()}
