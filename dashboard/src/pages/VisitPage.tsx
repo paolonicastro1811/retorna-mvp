@@ -67,7 +67,7 @@ export function VisitPage() {
 
   const selectCustomer = (c: CustomerSearchResult) => {
     setSelected(c)
-    setPhone(c.phone)
+    setPhone(c.phone.replace(/^\+55/, ''))
     setShowDropdown(false)
     setResults([])
   }
@@ -80,8 +80,9 @@ export function VisitPage() {
     setResult(null)
     setError(null)
     try {
+      const fullPhone = phone.trim().startsWith('+') ? phone.trim() : `+55${phone.trim()}`
       const res = await recordVisit(restaurantId, {
-        phone: phone.trim(),
+        phone: fullPhone,
         customerName: selected?.name || undefined,
         amount: amount ? parseFloat(amount) : undefined,
       })
@@ -186,14 +187,19 @@ export function VisitPage() {
         {/* Phone input with search */}
         <div className="relative">
           <label className="block text-base font-medium text-gray-700 mb-1">Telefone</label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={e => handlePhoneChange(e.target.value)}
-            placeholder="+5511999999999"
-            required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]"
-          />
+          <div className="flex">
+            <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-500 text-base select-none">
+              +55
+            </span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => handlePhoneChange(e.target.value)}
+              placeholder="11999999999"
+              required
+              className="flex-1 border border-gray-300 rounded-r-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-[#25D366]"
+            />
+          </div>
           {searching && (
             <div className="absolute right-3 top-7">
               <div className="w-3 h-3 border-2 border-[#25D366] border-t-transparent rounded-full animate-spin" />
