@@ -209,7 +209,7 @@ export function LandingPage() {
               poster="/images/hero.webp"
               style={{aspectRatio: '16/9'}}
             >
-              <source src="https://files2.heygen.ai/aws_pacific/avatar_tmp/ec1765c6ae0b4d5daa8730ec48bfc22c/d2e1ae58e7fb4654ac7f37923a0f7983.mp4" type="video/mp4" />
+              <source src="/images/d2e1ae58e7fb4654ac7f37923a0f7983.mp4" type="video/mp4" />
             </video>
           </div>
           <button
