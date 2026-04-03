@@ -2,19 +2,25 @@ import { useEffect, useState } from 'react'
 import { useRestaurantId } from '../contexts/AuthContext'
 import { api } from '../api/client'
 
-interface AutomationSummary {
+interface TemplateBreakdown {
   templateKey: string
-  status: string
-  count: number
+  sent: number
+  returned: number
+  returnRate: number
+  revenue: number
+  roiPerMessage: number
 }
 
-interface RecentLog {
-  id: string
-  templateKey: string
-  status: string
+interface RecentReturn {
   customerName: string
   customerPhone: string
-  createdAt: string
+  templateKey: string
+  messageSentAt: string
+  visitAt: string
+  daysToReturn: number
+  revenue: number
+  tableNumber: number | null
+  tableLabel: string | null
 }
 
 interface TierDist {
@@ -22,44 +28,54 @@ interface TierDist {
   count: number
 }
 
-interface Last30 {
-  templateKey: string
-  count: number
-}
-
-interface AutomationStats {
-  summary: AutomationSummary[]
-  recent: RecentLog[]
-  last30Days: Last30[]
+interface AutomationKpis {
+  kpis: {
+    totalSent: number
+    totalReturned: number
+    returnRate: number
+    totalRevenue: number
+    roiPerMessage: number
+    failedCount: number
+  }
+  templateBreakdown: TemplateBreakdown[]
+  recentReturns: RecentReturn[]
   tierDistribution: TierDist[]
 }
 
-// Only the 6 templates that exist on Meta
-const TEMPLATE_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  post_visit_thanks: { label: 'Pós-visita + Consentimento', emoji: '📩', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  reward_earned: { label: 'Recompensa 10 visitas', emoji: '🎁', color: 'bg-pink-50 text-pink-700 border-pink-200' },
-  surprise_discount: { label: 'Desconto surpresa', emoji: '🎉', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  milestone_halfway: { label: 'Metade do caminho', emoji: '🔥', color: 'bg-orange-50 text-orange-700 border-orange-200' },
-  reactivation: { label: 'Reativação', emoji: '💚', color: 'bg-green-50 text-green-700 border-green-200' },
-  loyalty_vip: { label: 'Cliente VIP 20%', emoji: '🏆', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+const TEMPLATE_LABELS: Record<string, { label: string; emoji: string }> = {
+  post_visit_consent: { label: 'Pós-visita', emoji: '📩' },
+  post_visit_thanks: { label: 'Pós-visita', emoji: '📩' },
+  reward_earned: { label: 'Recompensa 10 visitas', emoji: '🎁' },
+  surprise_discount: { label: 'Desconto surpresa', emoji: '🎉' },
+  milestone_halfway: { label: 'Metade do caminho', emoji: '🔥' },
+  reactivation: { label: 'Reativação', emoji: '💚' },
+  loyalty_vip: { label: 'Cliente VIP', emoji: '🏆' },
 }
 
-const TIER_CONFIG: Record<string, { label: string; emoji: string; color: string }> = {
-  novo: { label: 'Novo', emoji: '👤', color: 'bg-gray-100 text-gray-600' },
-  frequente: { label: 'Frequente', emoji: '⭐', color: 'bg-yellow-100 text-yellow-700' },
-  prata: { label: 'Prata', emoji: '🥈', color: 'bg-gray-200 text-gray-700' },
-  ouro: { label: 'Ouro', emoji: '🥇', color: 'bg-yellow-200 text-yellow-800' },
+const TIER_CONFIG: Record<string, { label: string; emoji: string; bg: string }> = {
+  novo: { label: 'Novo', emoji: '👤', bg: 'bg-gray-100' },
+  frequente: { label: 'Frequente', emoji: '⭐', bg: 'bg-yellow-50' },
+  prata: { label: 'Prata', emoji: '🥈', bg: 'bg-gray-50' },
+  ouro: { label: 'Ouro', emoji: '🥇', bg: 'bg-yellow-50' },
+}
+
+function fmtCurrency(v: number): string {
+  return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+}
+
+function tplLabel(key: string) {
+  return TEMPLATE_LABELS[key] ?? { label: key, emoji: '📨' }
 }
 
 export function AutomacoesPage() {
   const restaurantId = useRestaurantId()
-  const [stats, setStats] = useState<AutomationStats | null>(null)
+  const [data, setData] = useState<AutomationKpis | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!restaurantId) return
-    api<AutomationStats>(`/restaurants/${restaurantId}/automation-stats`)
-      .then(setStats)
+    api<AutomationKpis>(`/restaurants/${restaurantId}/automation-stats`)
+      .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [restaurantId])
@@ -70,132 +86,173 @@ export function AutomacoesPage() {
     </div>
   )
 
-  if (!stats) return (
-    <div className="text-center py-20 text-red-500 text-base">Erro ao carregar dados</div>
+  if (!data) return (
+    <div className="text-center py-20 text-red-500">Erro ao carregar dados</div>
   )
 
-  // Aggregate: total sent per template
-  const sentByTemplate: Record<string, number> = {}
-  const failedByTemplate: Record<string, number> = {}
-  for (const s of stats.summary) {
-    if (s.status === 'sent') sentByTemplate[s.templateKey] = (sentByTemplate[s.templateKey] ?? 0) + s.count
-    if (s.status === 'failed') failedByTemplate[s.templateKey] = (failedByTemplate[s.templateKey] ?? 0) + s.count
-  }
-
-  const totalSent = Object.values(sentByTemplate).reduce((a, b) => a + b, 0)
-  const totalFailed = Object.values(failedByTemplate).reduce((a, b) => a + b, 0)
-  const totalCustomers = stats.tierDistribution.reduce((a, b) => a + b.count, 0)
-  const last30Total = stats.last30Days.reduce((a, b) => a + b.count, 0)
+  const { kpis, templateBreakdown, recentReturns, tierDistribution } = data
+  const totalCustomers = tierDistribution.reduce((a, b) => a + b.count, 0)
 
   return (
     <div>
       {/* Header */}
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-gray-900">Automações</h1>
-        <p className="text-sm text-gray-400">Mensagens enviadas automaticamente pelo programa de fidelidade</p>
+        <p className="text-sm text-gray-400">Performance do programa de fidelidade — ultimos 90 dias</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-3 mb-5">
-        {[
-          { label: 'Mensagens enviadas', value: totalSent, color: 'text-[#25D366]' },
-          { label: 'Ultimos 30 dias', value: last30Total, color: 'text-blue-600' },
-          { label: 'Falhas', value: totalFailed, color: totalFailed > 0 ? 'text-red-500' : 'text-gray-400' },
-          { label: 'Clientes no programa', value: totalCustomers, color: 'text-gray-900' },
-        ].map(k => (
-          <div key={k.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className={`text-3xl font-bold ${k.color}`}>{k.value}</p>
-            <p className="text-sm text-gray-400">{k.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Tier Distribution */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5">
-        <h2 className="text-base font-bold text-gray-800 mb-3">Distribuição por nível</h2>
-        <div className="flex gap-2">
-          {['novo', 'frequente', 'prata', 'ouro'].map(tier => {
-            const cfg = TIER_CONFIG[tier]
-            const count = stats.tierDistribution.find(t => t.tier === tier)?.count ?? 0
-            const pct = totalCustomers > 0 ? Math.round((count / totalCustomers) * 100) : 0
-            return (
-              <div key={tier} className={`flex-1 rounded-xl p-3 text-center border ${cfg.color}`}>
-                <p className="text-2xl">{cfg.emoji}</p>
-                <p className="text-2xl font-bold">{count}</p>
-                <p className="text-sm font-medium">{cfg.label}</p>
-                <p className="text-sm opacity-60">{pct}%</p>
-              </div>
-            )
-          })}
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <p className="text-sm text-gray-400 mb-1">Receita atribuída</p>
+          <p className="text-2xl font-extrabold text-[#25D366]">{fmtCurrency(kpis.totalRevenue)}</p>
+          <p className="text-xs text-gray-400 mt-1">Clientes que voltaram após mensagem</p>
         </div>
-      </div>
-
-      {/* Messages by type */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5">
-        <h2 className="text-base font-bold text-gray-800 mb-3">Mensagens por tipo</h2>
-        <div className="space-y-2">
-          {Object.entries(TEMPLATE_LABELS).map(([key, cfg]) => {
-            const sent = sentByTemplate[key] ?? 0
-            const failed = failedByTemplate[key] ?? 0
-            if (sent === 0 && failed === 0) return null
-            const successRate = sent + failed > 0 ? Math.round((sent / (sent + failed)) * 100) : 0
-            return (
-              <div key={key} className={`flex items-center gap-3 rounded-xl border p-3 ${cfg.color}`}>
-                <span className="text-2xl">{cfg.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-semibold">{cfg.label}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex-1 h-1.5 bg-white/50 rounded-full overflow-hidden">
-                      <div className="h-full bg-current rounded-full opacity-40" style={{ width: `${successRate}%` }} />
-                    </div>
-                    <span className="text-sm font-medium">{successRate}%</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold">{sent}</p>
-                  <p className="text-sm opacity-60">enviadas</p>
-                </div>
-              </div>
-            )
-          })}
-          {totalSent === 0 && totalFailed === 0 && (
-            <div className="text-center py-8">
-              <p className="text-3xl mb-2">📭</p>
-              <p className="text-base text-gray-500">Nenhuma mensagem automática enviada ainda</p>
-              <p className="text-sm text-gray-400 mt-1">Registre visitas e as mensagens serao disparadas automaticamente</p>
-            </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <p className="text-sm text-gray-400 mb-1">ROI por mensagem</p>
+          <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(kpis.roiPerMessage)}</p>
+          <p className="text-xs text-gray-400 mt-1">{kpis.totalSent} mensagens enviadas</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <p className="text-sm text-gray-400 mb-1">Taxa de retorno</p>
+          <p className="text-2xl font-extrabold text-gray-900">{kpis.returnRate}%</p>
+          <p className="text-xs text-gray-400 mt-1">{kpis.totalReturned} de {kpis.totalSent} voltaram</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <p className="text-sm text-gray-400 mb-1">Mensagens</p>
+          <p className="text-2xl font-extrabold text-gray-900">{kpis.totalSent}</p>
+          {kpis.failedCount > 0 && (
+            <p className="text-xs text-red-400 mt-1">{kpis.failedCount} falha(s)</p>
+          )}
+          {kpis.failedCount === 0 && (
+            <p className="text-xs text-gray-400 mt-1">Nenhuma falha</p>
           )}
         </div>
       </div>
 
-      {/* Recent Activity */}
-      {stats.recent.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <h2 className="text-base font-bold text-gray-800 mb-3">Atividade recente</h2>
-          <div className="space-y-1.5 max-h-80 overflow-y-auto">
-            {stats.recent.map(log => {
-              const cfg = TEMPLATE_LABELS[log.templateKey] ?? { label: log.templateKey, emoji: '📨', color: 'bg-gray-50 text-gray-600' }
-              return (
-                <div key={log.id} className="flex items-center gap-2.5 py-1.5 border-b border-gray-50 last:border-0">
-                  <span className="text-lg">{cfg.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{log.customerName}</p>
-                    <p className="text-sm text-gray-400">{cfg.label}</p>
-                  </div>
-                  <span className={`text-sm px-1.5 py-0.5 rounded-full font-medium ${
-                    log.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                  }`}>
-                    {log.status === 'sent' ? 'Enviada' : 'Falhou'}
-                  </span>
-                  <span className="text-sm text-gray-400 w-20 text-right">
-                    {new Date(log.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                  </span>
-                </div>
-              )
-            })}
+      {/* ── Performance por tipo de mensagem ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5">
+        <h2 className="text-base font-bold text-gray-800 mb-3">Performance por tipo de mensagem</h2>
+        {templateBreakdown.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-400 border-b border-gray-100">
+                  <th className="pb-2 font-medium">Tipo</th>
+                  <th className="pb-2 font-medium text-center">Enviadas</th>
+                  <th className="pb-2 font-medium text-center">Voltaram</th>
+                  <th className="pb-2 font-medium text-center">Taxa</th>
+                  <th className="pb-2 font-medium text-right">Receita</th>
+                  <th className="pb-2 font-medium text-right">ROI/msg</th>
+                </tr>
+              </thead>
+              <tbody>
+                {templateBreakdown.map(t => {
+                  const cfg = tplLabel(t.templateKey)
+                  return (
+                    <tr key={t.templateKey} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2.5">
+                        <span className="mr-1.5">{cfg.emoji}</span>
+                        <span className="font-medium text-gray-800">{cfg.label}</span>
+                      </td>
+                      <td className="py-2.5 text-center text-gray-600">{t.sent}</td>
+                      <td className="py-2.5 text-center text-gray-600">{t.returned}</td>
+                      <td className="py-2.5 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          t.returnRate >= 50 ? 'bg-green-100 text-green-700'
+                            : t.returnRate >= 25 ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>{t.returnRate}%</span>
+                      </td>
+                      <td className="py-2.5 text-right font-semibold text-gray-900">{fmtCurrency(t.revenue)}</td>
+                      <td className="py-2.5 text-right text-gray-600">{fmtCurrency(t.roiPerMessage)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-3xl mb-2">📭</p>
+            <p className="text-base text-gray-500">Nenhuma mensagem enviada ainda</p>
+            <p className="text-sm text-gray-400 mt-1">Registre visitas e as mensagens serao disparadas automaticamente</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Últimos retornos atribuídos ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5">
+        <h2 className="text-base font-bold text-gray-800 mb-3">Retornos atribuídos</h2>
+        <p className="text-xs text-gray-400 mb-3">Clientes que voltaram dentro de 7 dias após receber uma mensagem</p>
+        {recentReturns.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-400 border-b border-gray-100">
+                  <th className="pb-2 font-medium">Cliente</th>
+                  <th className="pb-2 font-medium">Mensagem</th>
+                  <th className="pb-2 font-medium text-center">Voltou após</th>
+                  <th className="pb-2 font-medium text-center">Mesa</th>
+                  <th className="pb-2 font-medium text-right">Gasto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentReturns.map((r, i) => {
+                  const cfg = tplLabel(r.templateKey)
+                  return (
+                    <tr key={i} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2.5">
+                        <p className="font-medium text-gray-800">{r.customerName}</p>
+                        <p className="text-xs text-gray-400">{r.customerPhone}</p>
+                      </td>
+                      <td className="py-2.5">
+                        <span className="mr-1">{cfg.emoji}</span>
+                        <span className="text-gray-700">{cfg.label}</span>
+                      </td>
+                      <td className="py-2.5 text-center">
+                        <span className="inline-block bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                          {r.daysToReturn === 1 ? '1 dia' : `${r.daysToReturn} dias`}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-center text-gray-600">
+                        {r.tableNumber ? `Mesa ${r.tableNumber}` : '—'}
+                      </td>
+                      <td className="py-2.5 text-right font-semibold text-[#25D366]">
+                        {r.revenue > 0 ? fmtCurrency(r.revenue) : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-6">
+            <p className="text-sm text-gray-400">Nenhum retorno atribuído ainda</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Distribuição por nível ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <h2 className="text-base font-bold text-gray-800 mb-3">Distribuição por nível</h2>
+        <div className="flex gap-2">
+          {['novo', 'frequente', 'prata', 'ouro'].map(tier => {
+            const cfg = TIER_CONFIG[tier]
+            const count = tierDistribution.find(t => t.tier === tier)?.count ?? 0
+            const pct = totalCustomers > 0 ? Math.round((count / totalCustomers) * 100) : 0
+            return (
+              <div key={tier} className={`flex-1 rounded-xl p-3 text-center ${cfg.bg}`}>
+                <p className="text-xl">{cfg.emoji}</p>
+                <p className="text-xl font-bold text-gray-900">{count}</p>
+                <p className="text-sm font-medium text-gray-700">{cfg.label}</p>
+                <p className="text-xs text-gray-400">{pct}%</p>
+              </div>
+            )
+          })}
         </div>
-      )}
+      </div>
     </div>
   )
 }

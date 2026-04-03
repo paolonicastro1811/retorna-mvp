@@ -341,57 +341,170 @@ router.get("/campaigns/:campaignId/stats", async (req: Request, res: Response) =
 router.get("/:restaurantId/automation-stats", async (req: Request, res: Response) => {
   try {
     const restaurantId = param(req, "restaurantId");
+    const ATTRIBUTION_WINDOW_DAYS = 7;
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000);
 
-    // Summary by templateKey + status
-    const logs = await prisma.automationLog.groupBy({
-      by: ["templateKey", "status"],
-      where: { restaurantId },
-      _count: { id: true },
-    });
-
-    // Recent logs (last 50)
-    const recent = await prisma.automationLog.findMany({
-      where: { restaurantId },
-      include: { customer: { select: { name: true, phone: true } } },
+    // ── 1. All sent automation logs (last 90 days) ──
+    const sentLogs = await prisma.automationLog.findMany({
+      where: { restaurantId, status: "sent", createdAt: { gte: ninetyDaysAgo } },
+      select: { id: true, customerId: true, templateKey: true, createdAt: true },
       orderBy: { createdAt: "desc" },
-      take: 50,
     });
 
-    // Daily counts (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const daily = await prisma.automationLog.groupBy({
-      by: ["templateKey"],
-      where: { restaurantId, createdAt: { gte: thirtyDaysAgo }, status: "sent" },
-      _count: { id: true },
+    // ── 2. All visits (last 90 days) with amount ──
+    const visits = await prisma.customerEvent.findMany({
+      where: { restaurantId, eventType: "visit", occurredAt: { gte: ninetyDaysAgo } },
+      select: { id: true, customerId: true, amount: true, occurredAt: true },
+      orderBy: { occurredAt: "asc" },
     });
 
-    // Tier distribution
+    // ── 3. All reservations (last 90 days) with table info ──
+    const reservations = await prisma.reservation.findMany({
+      where: { restaurantId, date: { gte: ninetyDaysAgo }, status: { notIn: ["cancelled", "no_show"] } },
+      select: { customerId: true, date: true, tableId: true, table: { select: { tableNumber: true, label: true } } },
+    });
+
+    // ── 4. Attribution: match message → first visit within 7 days ──
+    const visitsByCustomer = new Map<string, typeof visits>();
+    for (const v of visits) {
+      const arr = visitsByCustomer.get(v.customerId) || [];
+      arr.push(v);
+      visitsByCustomer.set(v.customerId, arr);
+    }
+
+    const resByCustomer = new Map<string, typeof reservations>();
+    for (const r of reservations) {
+      if (!r.customerId) continue;
+      const arr = resByCustomer.get(r.customerId) || [];
+      arr.push(r);
+      resByCustomer.set(r.customerId, arr);
+    }
+
+    // Per-template aggregation
+    const templateStats = new Map<string, { sent: number; returned: number; revenue: number }>();
+    // Attributed returns for the "recent returns" list
+    const attributedReturns: {
+      customerId: string;
+      templateKey: string;
+      messageSentAt: Date;
+      visitAt: Date;
+      daysToReturn: number;
+      revenue: number;
+      tableNumber: number | null;
+      tableLabel: string | null;
+    }[] = [];
+
+    const usedVisitIds = new Set<string>(); // prevent double-attribution
+
+    for (const log of sentLogs) {
+      const key = log.templateKey;
+      if (!templateStats.has(key)) templateStats.set(key, { sent: 0, returned: 0, revenue: 0 });
+      const stat = templateStats.get(key)!;
+      stat.sent++;
+
+      // Find first visit within attribution window
+      const customerVisits = visitsByCustomer.get(log.customerId) || [];
+      const windowEnd = new Date(log.createdAt.getTime() + ATTRIBUTION_WINDOW_DAYS * 86400000);
+
+      for (const v of customerVisits) {
+        if (v.occurredAt <= log.createdAt) continue; // visit must be AFTER message
+        if (v.occurredAt > windowEnd) break; // outside window (visits sorted asc)
+        if (usedVisitIds.has(v.id)) continue; // already attributed
+
+        usedVisitIds.add(v.id);
+        const revenue = v.amount ?? 0;
+        stat.returned++;
+        stat.revenue += revenue;
+
+        // Find matching reservation for table info
+        const customerRes = resByCustomer.get(log.customerId) || [];
+        const matchingRes = customerRes.find(r => {
+          const resDate = new Date(r.date).toISOString().slice(0, 10);
+          const visitDate = v.occurredAt.toISOString().slice(0, 10);
+          return resDate === visitDate;
+        });
+
+        attributedReturns.push({
+          customerId: log.customerId,
+          templateKey: key,
+          messageSentAt: log.createdAt,
+          visitAt: v.occurredAt,
+          daysToReturn: Math.ceil((v.occurredAt.getTime() - log.createdAt.getTime()) / 86400000),
+          revenue,
+          tableNumber: matchingRes?.table?.tableNumber ?? null,
+          tableLabel: matchingRes?.table?.label ?? null,
+        });
+        break; // only first visit per message
+      }
+    }
+
+    // ── 5. Failed count (all time) ──
+    const failedCount = await prisma.automationLog.count({
+      where: { restaurantId, status: "failed" },
+    });
+
+    // ── 6. Tier distribution ──
     const tiers = await prisma.customer.groupBy({
       by: ["tier"],
       where: { restaurantId },
       _count: { id: true },
     });
 
+    // ── 7. Customer info for attributed returns ──
+    const customerIds = [...new Set(attributedReturns.map(a => a.customerId))];
+    const customers = customerIds.length > 0
+      ? await prisma.customer.findMany({
+          where: { id: { in: customerIds } },
+          select: { id: true, name: true, phone: true },
+        })
+      : [];
+    const customerMap = new Map(customers.map(c => [c.id, c]));
+
+    // ── 8. Build response ──
+    const totalSent = sentLogs.length;
+    const totalReturned = attributedReturns.length;
+    const totalRevenue = attributedReturns.reduce((s, a) => s + a.revenue, 0);
+
     res.json({
-      summary: logs.map((l) => ({
-        templateKey: l.templateKey,
-        status: l.status,
-        count: l._count.id,
-      })),
-      recent: recent.map((r) => ({
-        id: r.id,
-        templateKey: r.templateKey,
-        status: r.status,
-        customerName: r.customer?.name ?? "—",
-        customerPhone: r.customer?.phone ?? "",
-        createdAt: r.createdAt,
-      })),
-      last30Days: daily.map((d) => ({
-        templateKey: d.templateKey,
-        count: d._count.id,
-      })),
+      // Top KPIs
+      kpis: {
+        totalSent,
+        totalReturned,
+        returnRate: totalSent > 0 ? Math.round((totalReturned / totalSent) * 100) : 0,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        roiPerMessage: totalSent > 0 ? Math.round((totalRevenue / totalSent) * 100) / 100 : 0,
+        failedCount,
+      },
+      // Per-template breakdown
+      templateBreakdown: Array.from(templateStats.entries())
+        .map(([key, s]) => ({
+          templateKey: key,
+          sent: s.sent,
+          returned: s.returned,
+          returnRate: s.sent > 0 ? Math.round((s.returned / s.sent) * 100) : 0,
+          revenue: Math.round(s.revenue * 100) / 100,
+          roiPerMessage: s.sent > 0 ? Math.round((s.revenue / s.sent) * 100) / 100 : 0,
+        }))
+        .sort((a, b) => b.revenue - a.revenue),
+      // Recent attributed returns (last 20)
+      recentReturns: attributedReturns
+        .sort((a, b) => b.visitAt.getTime() - a.visitAt.getTime())
+        .slice(0, 20)
+        .map(a => {
+          const c = customerMap.get(a.customerId);
+          return {
+            customerName: c?.name ?? "—",
+            customerPhone: c?.phone ?? "",
+            templateKey: a.templateKey,
+            messageSentAt: a.messageSentAt,
+            visitAt: a.visitAt,
+            daysToReturn: a.daysToReturn,
+            revenue: a.revenue,
+            tableNumber: a.tableNumber,
+            tableLabel: a.tableLabel,
+          };
+        }),
+      // Tier distribution
       tierDistribution: tiers.map((t) => ({
         tier: t.tier,
         count: t._count.id,
