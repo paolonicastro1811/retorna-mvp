@@ -199,11 +199,15 @@ export function AutomacoesPage() {
     </div>
   )
 
+  // KPIs computed from real customer data — update instantly on visit/edit
+  const totalRevenue = customers.reduce((s, c) => s + c.totalSpent, 0)
+  const totalVisits = customers.reduce((s, c) => s + c.totalVisits, 0)
+  const avgTicket = totalVisits > 0 ? Math.round(totalRevenue / totalVisits) : 0
+  const activeCount = customers.filter(c => c.lifecycleStatus === 'active').length
+
+  // Automation returns (from API or demo)
   const effective = kpiData?.kpis?.totalSent ? kpiData : DEMO_KPIS
-  const kpis = effective.kpis
   const recentReturns = effective.recentReturns ?? []
-  const hasKpis = kpis.totalSent > 0
-  const periodLabel = PERIOD_OPTIONS.find(p => p.days === days)?.label ?? `${days} dias`
 
   const filtered = customers.filter(c => {
     if (!search) return true
@@ -235,27 +239,25 @@ export function AutomacoesPage() {
         </div>
       </div>
 
-      {/* ── KPI Row (compact) ── */}
-      {hasKpis && (
-        <div className="grid grid-cols-4 gap-3 mb-4">
-          <div className="bg-[#1a1a2e] rounded-xl p-3 text-center">
-            <p className="text-2xl font-extrabold text-[#25D366]">{fmtCurrency(kpis.totalRevenue)}</p>
-            <p className="text-xs text-gray-400">Receita — {periodLabel}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-2xl font-extrabold text-gray-900">{kpis.totalSent}</p>
-            <p className="text-xs text-gray-400">Mensagens</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-2xl font-extrabold text-gray-900">{kpis.returnRate}%</p>
-            <p className="text-xs text-gray-400">Retorno</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-            <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(kpis.roiPerMessage)}</p>
-            <p className="text-xs text-gray-400">Por msg</p>
-          </div>
+      {/* ── KPI Row (computed from real customer data) ── */}
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        <div className="bg-[#1a1a2e] rounded-xl p-3 text-center">
+          <p className="text-2xl font-extrabold text-[#25D366]">{fmtCurrency(totalRevenue)}</p>
+          <p className="text-xs text-gray-400">Receita total</p>
         </div>
-      )}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+          <p className="text-2xl font-extrabold text-gray-900">{customers.length}</p>
+          <p className="text-xs text-gray-400">Clientes</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+          <p className="text-2xl font-extrabold text-gray-900">{activeCount}</p>
+          <p className="text-xs text-gray-400">Ativos</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+          <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(avgTicket)}</p>
+          <p className="text-xs text-gray-400">Ticket medio</p>
+        </div>
+      </div>
 
       {/* ── Customers Table ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
