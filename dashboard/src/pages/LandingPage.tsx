@@ -90,8 +90,8 @@ export function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-[1320px] mx-auto px-6 py-3 flex items-center justify-between">
           <button onClick={scrollToTop} className="flex items-center gap-2 bg-transparent border-none cursor-pointer p-0" aria-label="Retorna - início">
-            <img src="/images/Gemini_Generated_Image_v8qw99v8qw99v8qw.png" alt="Retorna" className="h-12 w-auto" />
-            <span className="text-xl font-extrabold text-[#1a1a2e]">Retorna</span>
+            <img src="/images/Gemini_Generated_Image_v8qw99v8qw99v8qw.png" alt="Retorna" className="h-16 w-auto" />
+            <span className="text-2xl font-extrabold text-[#1a1a2e]">Retorna</span>
           </button>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/login')} className="text-sm font-semibold text-[#2d2d3a] hover:text-[#1a1a2e] bg-transparent border-none cursor-pointer">Entrar</button>
