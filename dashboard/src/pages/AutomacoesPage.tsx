@@ -245,16 +245,16 @@ export function AutomacoesPage() {
           <p className="text-2xl font-extrabold text-[#25D366]">{fmtCurrency(totalRevenue)}</p>
           <p className="text-xs text-gray-400">Receita total</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-          <p className="text-2xl font-extrabold text-gray-900">{customers.length}</p>
+        <div className="bg-[#1a1a2e] rounded-xl p-3 text-center">
+          <p className="text-2xl font-extrabold text-white">{customers.length}</p>
           <p className="text-xs text-gray-400">Clientes</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-          <p className="text-2xl font-extrabold text-gray-900">{activeCount}</p>
+        <div className="bg-[#1a1a2e] rounded-xl p-3 text-center">
+          <p className="text-2xl font-extrabold text-white">{activeCount}</p>
           <p className="text-xs text-gray-400">Ativos</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
-          <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(avgTicket)}</p>
+        <div className="bg-[#1a1a2e] rounded-xl p-3 text-center">
+          <p className="text-2xl font-extrabold text-white">{fmtCurrency(avgTicket)}</p>
           <p className="text-xs text-gray-400">Ticket medio</p>
         </div>
       </div>

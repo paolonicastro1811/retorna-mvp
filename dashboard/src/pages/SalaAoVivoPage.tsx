@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRestaurantId } from '../contexts/AuthContext'
+import { api } from '../api/client'
 import { getLiveStats } from '../api/liveStats'
 import type { LiveStats } from '../types'
 
@@ -21,6 +22,14 @@ export function SalaAoVivoPage() {
   const [stats, setStats] = useState<LiveStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [restaurantTz, setRestaurantTz] = useState('America/Sao_Paulo')
+
+  useEffect(() => {
+    if (!restaurantId) return
+    api<{ timezone: string }>(`/restaurants/${restaurantId}`)
+      .then(r => { if (r.timezone) setRestaurantTz(r.timezone) })
+      .catch(() => {})
+  }, [restaurantId])
 
   const fetchStats = useCallback(async () => {
     if (!restaurantId) return
@@ -67,7 +76,7 @@ export function SalaAoVivoPage() {
           </span>
         </div>
         <span className="text-base text-gray-400">
-          Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: restaurantTz })}
         </span>
       </div>
 
