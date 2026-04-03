@@ -89,7 +89,9 @@ export function LandingPage() {
       {/* NAVBAR */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-[1320px] mx-auto px-6 py-3 flex items-center justify-between">
-          <button onClick={scrollToTop} className="text-xl font-extrabold text-[#1a1a2e] bg-transparent border-none cursor-pointer" aria-label="Retorna - início">Retorna</button>
+          <button onClick={scrollToTop} className="bg-transparent border-none cursor-pointer p-0" aria-label="Retorna - início">
+            <img src="/images/logo.png" alt="Retorna" className="h-10 w-auto" />
+          </button>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/login')} className="text-sm font-semibold text-[#2d2d3a] hover:text-[#1a1a2e] bg-transparent border-none cursor-pointer">Entrar</button>
             <button onClick={() => navigate('/comecar')} className="text-sm font-bold text-white bg-[#25D366] px-5 py-2 rounded-full hover:bg-[#1DA851] transition-colors cursor-pointer border-none">Começar grátis</button>
