@@ -875,13 +875,25 @@ export function SettingsPage() {
                   </label>
                   {!h.closed ? (
                     <>
-                      <input type="time" value={h.open}
+                      <select value={h.open}
                         onChange={e => setEditHours(editHours.map((hr, idx) => idx === i ? { ...hr, open: e.target.value } : hr))}
-                        className="border border-gray-200 rounded px-1.5 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
+                        className="border border-gray-200 rounded px-1.5 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]">
+                        {Array.from({ length: 48 }, (_, j) => {
+                          const hh = String(Math.floor(j / 2)).padStart(2, '0')
+                          const mm = j % 2 === 0 ? '00' : '30'
+                          return <option key={j} value={`${hh}:${mm}`}>{hh}:{mm}</option>
+                        })}
+                      </select>
                       <span className="text-sm text-gray-400">-</span>
-                      <input type="time" value={h.close}
+                      <select value={h.close}
                         onChange={e => setEditHours(editHours.map((hr, idx) => idx === i ? { ...hr, close: e.target.value } : hr))}
-                        className="border border-gray-200 rounded px-1.5 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
+                        className="border border-gray-200 rounded px-1.5 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]">
+                        {Array.from({ length: 48 }, (_, j) => {
+                          const hh = String(Math.floor(j / 2)).padStart(2, '0')
+                          const mm = j % 2 === 0 ? '00' : '30'
+                          return <option key={j} value={`${hh}:${mm}`}>{hh}:{mm}</option>
+                        })}
+                      </select>
                     </>
                   ) : (
                     <span className="text-sm text-gray-400">Fechado</span>
@@ -894,7 +906,7 @@ export function SettingsPage() {
               <span className="text-sm text-gray-600 whitespace-nowrap">Duração média da refeição:</span>
               <div className="flex items-center gap-1">
                 <input type="number" min={30} max={240} step={15} value={mealDuration}
-                  onChange={e => setMealDuration(Math.max(30, Math.min(240, parseInt(e.target.value) || 90)))}
+                  onChange={e => setMealDuration(Math.max(30, Math.min(240, parseInt(e.target.value) || 60)))}
                   className="w-16 border border-gray-200 rounded px-2 py-1 text-sm text-center bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
                 <span className="text-sm text-gray-400">min</span>
               </div>
