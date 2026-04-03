@@ -905,9 +905,13 @@ export function SettingsPage() {
             <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-3">
               <span className="text-sm text-gray-600 whitespace-nowrap">Duração média da refeição:</span>
               <div className="flex items-center gap-1">
-                <input type="number" min={30} max={240} step={15} value={mealDuration}
-                  onChange={e => setMealDuration(Math.max(30, Math.min(240, parseInt(e.target.value) || 60)))}
-                  className="w-16 border border-gray-200 rounded px-2 py-1 text-sm text-center bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]" />
+                <select value={mealDuration}
+                  onChange={e => setMealDuration(parseInt(e.target.value))}
+                  className="border border-gray-200 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#25D366]">
+                  {[30, 60, 90, 120, 150, 180].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
                 <span className="text-sm text-gray-400">min</span>
               </div>
               <span className="text-sm text-gray-400">(Mesas ficam livres automaticamente apos esse tempo)</span>

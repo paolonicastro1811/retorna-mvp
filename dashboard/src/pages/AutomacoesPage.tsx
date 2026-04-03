@@ -38,6 +38,12 @@ const TEMPLATE_LABELS: Record<string, string> = {
   loyalty_vip: 'Cliente VIP',
 }
 
+const PERIOD_OPTIONS = [
+  { label: '7 dias', days: 7 },
+  { label: '30 dias', days: 30 },
+  { label: '90 dias', days: 90 },
+]
+
 function fmtCurrency(v: number): string {
   return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
@@ -46,14 +52,16 @@ export function AutomacoesPage() {
   const restaurantId = useRestaurantId()
   const [data, setData] = useState<AutomationKpis | null>(null)
   const [loading, setLoading] = useState(true)
+  const [days, setDays] = useState(90)
 
   useEffect(() => {
     if (!restaurantId) return
-    api<AutomationKpis>(`/restaurants/${restaurantId}/automation-stats`)
+    setLoading(true)
+    api<AutomationKpis>(`/restaurants/${restaurantId}/automation-stats?days=${days}`)
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [restaurantId])
+  }, [restaurantId, days])
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -61,55 +69,43 @@ export function AutomacoesPage() {
     </div>
   )
 
-  // ── DEMO DATA (remove after review) ──
-  const DEMO = true
-  const demoData: AutomationKpis = {
-    kpis: {
-      totalSent: 47,
-      totalReturned: 14,
-      returnRate: 30,
-      totalRevenue: 2840,
-      roiPerMessage: 60,
-      failedCount: 1,
-    },
-    templateBreakdown: [],
-    recentReturns: [
-      { customerName: 'João Silva', customerPhone: '+5511999001122', templateKey: 'reactivation', messageSentAt: '2026-03-28T10:00:00Z', visitAt: '2026-03-30T19:30:00Z', daysToReturn: 2, revenue: 185, tableNumber: 4, tableLabel: null },
-      { customerName: 'Maria Oliveira', customerPhone: '+5511988776655', templateKey: 'post_visit_thanks', messageSentAt: '2026-03-29T13:00:00Z', visitAt: '2026-04-01T20:00:00Z', daysToReturn: 3, revenue: 220, tableNumber: 7, tableLabel: null },
-      { customerName: 'Carlos Santos', customerPhone: '+5511977665544', templateKey: 'surprise_discount', messageSentAt: '2026-03-25T17:00:00Z', visitAt: '2026-03-27T12:30:00Z', daysToReturn: 2, revenue: 310, tableNumber: 2, tableLabel: null },
-      { customerName: 'Ana Costa', customerPhone: '+5511966554433', templateKey: 'milestone_halfway', messageSentAt: '2026-03-20T13:00:00Z', visitAt: '2026-03-24T19:00:00Z', daysToReturn: 4, revenue: 150, tableNumber: null, tableLabel: null },
-      { customerName: 'Pedro Almeida', customerPhone: '+5511955443322', templateKey: 'reward_earned', messageSentAt: '2026-03-22T13:00:00Z', visitAt: '2026-03-23T20:30:00Z', daysToReturn: 1, revenue: 420, tableNumber: 12, tableLabel: null },
-      { customerName: 'Fernanda Lima', customerPhone: '+5511944332211', templateKey: 'reactivation', messageSentAt: '2026-03-18T10:00:00Z', visitAt: '2026-03-22T13:00:00Z', daysToReturn: 4, revenue: 275, tableNumber: 5, tableLabel: null },
-      { customerName: 'Lucas Rocha', customerPhone: '+5511933221100', templateKey: 'post_visit_thanks', messageSentAt: '2026-03-30T13:00:00Z', visitAt: '2026-04-02T19:45:00Z', daysToReturn: 3, revenue: 190, tableNumber: 9, tableLabel: null },
-      { customerName: 'Juliana Pereira', customerPhone: '+5511922110099', templateKey: 'surprise_discount', messageSentAt: '2026-03-15T17:00:00Z', visitAt: '2026-03-17T21:00:00Z', daysToReturn: 2, revenue: 340, tableNumber: 1, tableLabel: null },
-      { customerName: 'Roberto Mendes', customerPhone: '+5511911009988', templateKey: 'reactivation', messageSentAt: '2026-03-10T10:00:00Z', visitAt: '2026-03-15T20:00:00Z', daysToReturn: 5, revenue: 160, tableNumber: 8, tableLabel: null },
-      { customerName: 'Camila Souza', customerPhone: '+5511900998877', templateKey: 'loyalty_vip', messageSentAt: '2026-03-27T13:00:00Z', visitAt: '2026-03-28T19:30:00Z', daysToReturn: 1, revenue: 590, tableNumber: 3, tableLabel: null },
-    ],
-    tierDistribution: [],
-  }
-  const effective = DEMO ? demoData : data
-
-  if (!effective) return (
+  if (!data) return (
     <div className="text-center py-20 text-red-500">Erro ao carregar dados</div>
   )
-  // ── END DEMO DATA ──
 
-  const { kpis, recentReturns } = effective
+  const { kpis, recentReturns } = data
   const hasActivity = kpis.totalSent > 0
+  const periodLabel = PERIOD_OPTIONS.find(p => p.days === days)?.label ?? `${days} dias`
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Resultados</h1>
-        <p className="text-sm text-gray-400">Quanto o Retorna esta gerando para voce — ultimos 90 dias</p>
+      {/* Header + period filter */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Resultados</h1>
+          <p className="text-sm text-gray-400">Quanto o Retorna esta gerando para voce</p>
+        </div>
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+          {PERIOD_OPTIONS.map(p => (
+            <button
+              key={p.days}
+              onClick={() => setDays(p.days)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                days === p.days
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {hasActivity ? (
         <>
           {/* ── Hero: Revenue ── */}
           <div className="bg-[#1a1a2e] rounded-2xl p-6 mb-4 text-center">
-            <p className="text-sm text-gray-400 mb-1">Receita gerada pelo Retorna</p>
+            <p className="text-sm text-gray-400 mb-1">Receita gerada pelo Retorna — {periodLabel}</p>
             <p className="text-4xl font-extrabold text-[#25D366]">{fmtCurrency(kpis.totalRevenue)}</p>
             <p className="text-sm text-gray-400 mt-2">
               {kpis.totalReturned} cliente{kpis.totalReturned !== 1 ? 's' : ''} voltou apos receber mensagem

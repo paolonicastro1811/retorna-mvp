@@ -342,25 +342,26 @@ router.get("/:restaurantId/automation-stats", async (req: Request, res: Response
   try {
     const restaurantId = param(req, "restaurantId");
     const ATTRIBUTION_WINDOW_DAYS = 7;
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000);
+    const days = Math.min(365, Math.max(1, parseInt(req.query.days as string) || 90));
+    const sinceDate = new Date(Date.now() - days * 86400000);
 
     // ── 1. All sent automation logs (last 90 days) ──
     const sentLogs = await prisma.automationLog.findMany({
-      where: { restaurantId, status: "sent", createdAt: { gte: ninetyDaysAgo } },
+      where: { restaurantId, status: "sent", createdAt: { gte: sinceDate } },
       select: { id: true, customerId: true, templateKey: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     });
 
     // ── 2. All visits (last 90 days) with amount ──
     const visits = await prisma.customerEvent.findMany({
-      where: { restaurantId, eventType: "visit", occurredAt: { gte: ninetyDaysAgo } },
+      where: { restaurantId, eventType: "visit", occurredAt: { gte: sinceDate } },
       select: { id: true, customerId: true, amount: true, occurredAt: true },
       orderBy: { occurredAt: "asc" },
     });
 
     // ── 3. All reservations (last 90 days) with table info ──
     const reservations = await prisma.reservation.findMany({
-      where: { restaurantId, date: { gte: ninetyDaysAgo }, status: { notIn: ["cancelled", "no_show"] } },
+      where: { restaurantId, date: { gte: sinceDate }, status: { notIn: ["cancelled", "no_show"] } },
       select: { customerId: true, date: true, tableId: true, table: { select: { tableNumber: true, label: true } } },
     });
 
