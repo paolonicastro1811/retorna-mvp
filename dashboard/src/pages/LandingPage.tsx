@@ -193,6 +193,34 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* VIDEO */}
+      <section className="py-20 bg-[#1a1a2e]" aria-label="Veja o Retorna em ação">
+        <div className="max-w-[900px] mx-auto px-6 text-center">
+          <p className="text-sm font-bold tracking-widest uppercase text-[#25D366] mb-3">Veja como funciona</p>
+          <h2 className="text-[clamp(1.8rem,3.5vw,2.4rem)] font-extrabold leading-tight text-white mb-4">
+            Em menos de 2 minutos você entende tudo
+          </h2>
+          <p className="text-white/60 mb-10 text-lg">Assista e veja como o Retorna traz seus clientes de volta.</p>
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 mx-auto" style={{maxWidth: '780px'}}>
+            <video
+              controls
+              playsInline
+              className="w-full rounded-2xl"
+              poster="/images/hero.webp"
+              style={{aspectRatio: '16/9'}}
+            >
+              <source src="https://files2.heygen.ai/aws_pacific/avatar_tmp/ec1765c6ae0b4d5daa8730ec48bfc22c/7e7e2704d9014591bdf718137f875c46.mp4" type="video/mp4" />
+            </video>
+          </div>
+          <button
+            onClick={() => window.open('/comecar', '_self')}
+            className="mt-10 inline-flex items-center gap-2.5 bg-[#25D366] text-white text-lg font-bold py-4 px-10 rounded-full hover:bg-[#1DA851] hover:-translate-y-0.5 transition-all cursor-pointer border-none shadow-lg shadow-green-900/30"
+          >
+            Quero começar grátis
+          </button>
+        </div>
+      </section>
+
       {/* RESULTADOS */}
       <section className="py-20" aria-label="Resultados reais do Retorna">
         <div className="max-w-[1320px] mx-auto px-6">
