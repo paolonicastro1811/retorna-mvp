@@ -141,19 +141,31 @@ export function AutomacoesPage() {
     if (editingAmountId && amountInputRef.current) amountInputRef.current.focus()
   }, [editingAmountId])
 
+  // Track recently updated rows for flash animation
+  const [flashId, setFlashId] = useState<string | null>(null)
+
   const handleRecordVisit = async (customer: Customer) => {
     if (submitting) return
     setSubmitting(true)
     try {
-      await recordVisit(restaurantId, {
+      const result = await recordVisit(restaurantId, {
         phone: customer.phone,
         customerName: customer.name || undefined,
         amount: visitAmount ? parseFloat(visitAmount) : undefined,
       })
-      const updated = await getCustomers(restaurantId)
-      setCustomers(updated)
+      // Instant UI update from response
+      const updatedCustomer = result.customer
+      setCustomers(prev => prev.map(c =>
+        c.id === customer.id
+          ? { ...c, totalVisits: updatedCustomer.totalVisits, totalSpent: updatedCustomer.totalSpent, lastVisitAt: updatedCustomer.lastVisitAt, lastVisitAmount: updatedCustomer.lastVisitAmount }
+          : c
+      ))
       setVisitingId(null)
       setVisitAmount('')
+      // Flash the row green briefly
+      setFlashId(customer.id)
+      setTimeout(() => setFlashId(null), 1500)
+      // Background refresh KPIs
       api<AutomationKpis>(`/restaurants/${restaurantId}/automation-stats?days=${days}`)
         .then(setKpiData).catch(() => {})
     } catch {
@@ -171,6 +183,9 @@ export function AutomacoesPage() {
       setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, lastVisitAmount: updated.lastVisitAmount, totalSpent: updated.totalSpent } : c))
       setEditingAmountId(null)
       setEditAmountValue('')
+      // Flash the row
+      setFlashId(customer.id)
+      setTimeout(() => setFlashId(null), 1500)
     } catch {
       alert('Erro ao salvar valor')
     } finally {
@@ -272,7 +287,9 @@ export function AutomacoesPage() {
               </thead>
               <tbody>
                 {filtered.map(c => (
-                  <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                  <tr key={c.id} className={`border-b border-gray-50 last:border-0 transition-colors duration-700 ${
+                    flashId === c.id ? 'bg-green-100' : 'hover:bg-gray-50/50'
+                  }`}>
                     <td className="px-4 py-2.5 font-medium text-gray-800">{c.name || '—'}</td>
                     <td className="px-4 py-2.5">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
