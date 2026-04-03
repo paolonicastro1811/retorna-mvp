@@ -170,7 +170,7 @@ export async function runDailyAutomation() {
     if (!reactivationTpl) continue;
 
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - r.reactivationAfterDays);
+    cutoffDate.setUTCDate(cutoffDate.getUTCDate() - r.reactivationAfterDays);
 
     // Find inactive customers eligible for reactivation
     const customers = await prisma.customer.findMany({

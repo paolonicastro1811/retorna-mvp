@@ -23,11 +23,12 @@ function safeTz(tz: string | null | undefined): string {
 
 /**
  * Get the day-of-week for a date string in a given IANA timezone.
- * Uses UTC midnight + Intl for correct local weekday (0=Sunday).
+ * Uses UTC noon (not midnight!) so the local date is the same calendar day
+ * in all Brazilian timezones (UTC-2 to UTC-5). Returns 0=Sunday.
  */
 function getDayOfWeekInTimezone(dateStr: string, timezone: string): number {
   const tz = safeTz(timezone);
-  const d = new Date(dateStr + "T00:00:00Z");
+  const d = new Date(dateStr + "T12:00:00Z"); // UTC noon — safe for all BR timezones
   const parts = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: tz }).formatToParts(d);
   const dayName = parts.find(p => p.type === "weekday")?.value ?? "";
   const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
@@ -115,8 +116,8 @@ export const bookingService = {
     const timezone = restaurant?.timezone ?? "America/Sao_Paulo";
     const mealDuration = restaurant?.avgMealDurationMinutes || 90;
 
-    // Parse without "Z" — treat as local time
-    const date = new Date(dateStr + "T00:00:00");
+    // Parse as UTC midnight — @db.Date fields are stored date-only
+    const date = new Date(dateStr + "T00:00:00Z");
     const dayOfWeek = getDayOfWeekInTimezone(dateStr, timezone);
     const dayName = DAY_NAMES_PT[dayOfWeek];
 
@@ -218,8 +219,8 @@ export const bookingService = {
       return { success: false, error: "Dados incompletos (data, hora ou número de pessoas faltando)" };
     }
 
-    // Validate date
-    const date = new Date(booking.date + "T00:00:00");
+    // Validate date — parse as UTC midnight (@db.Date)
+    const date = new Date(booking.date + "T00:00:00Z");
     if (isNaN(date.getTime())) {
       return { success: false, error: "Data inválida" };
     }
@@ -352,7 +353,7 @@ export const bookingService = {
     customerId: string
   ): Promise<CancelReservationResult> {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
 
     // Find upcoming reservations
     const upcoming = await prisma.reservation.findMany({

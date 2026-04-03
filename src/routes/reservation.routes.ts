@@ -28,11 +28,12 @@ function safeTz(tz: string | null | undefined): string {
 
 /**
  * Get the day-of-week for a date string in a given IANA timezone.
- * Uses UTC midnight + Intl to derive the correct local weekday (0=Sunday).
+ * Uses UTC noon (not midnight!) so the local date is the same calendar day
+ * in all Brazilian timezones (UTC-2 to UTC-5). Returns 0=Sunday.
  */
 function getDayOfWeekInTimezone(dateStr: string, timezone: string): number {
   const tz = safeTz(timezone);
-  const d = new Date(dateStr + "T00:00:00Z"); // UTC midnight
+  const d = new Date(dateStr + "T12:00:00Z"); // UTC noon — safe for all BR timezones
   const parts = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: tz }).formatToParts(d);
   const dayName = parts.find(p => p.type === "weekday")?.value ?? "";
   const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };

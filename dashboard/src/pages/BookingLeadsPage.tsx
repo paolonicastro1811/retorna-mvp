@@ -58,6 +58,16 @@ function getWeekDays(center: Date): Date[] {
   })
 }
 
+// Get day-of-week for a Date in restaurant timezone (0=Sun)
+function getDayInTz(d: Date, tz: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: tz }).formatToParts(d)
+    const day = parts.find(p => p.type === 'weekday')?.value ?? ''
+    const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    return map[day] ?? d.getDay()
+  } catch { return d.getDay() }
+}
+
 // Get current time in restaurant timezone
 function getNowInRestaurantTz(tz: string): { hours: number; minutes: number; dateStr: string } {
   const now = new Date()
@@ -258,7 +268,8 @@ export function BookingLeadsPage() {
           const ds = toDateStr(d)
           const isSelected = ds === dateStr
           const isT = todayInTz === ds
-          const dayH = hours.find(h => h.dayOfWeek === d.getDay())
+          const dow = getDayInTz(d, restaurantTz)
+          const dayH = hours.find(h => h.dayOfWeek === dow)
           const closed = dayH?.isClosed ?? true
           return (
             <button key={ds} onClick={() => setSelectedDate(new Date(d))}
@@ -267,7 +278,7 @@ export function BookingLeadsPage() {
                   : closed ? 'text-gray-300 cursor-default' : 'hover:bg-white text-gray-600'
               }`}>
               <div className="text-sm font-medium uppercase">
-                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'][d.getDay()]}
+                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'][dow]}
               </div>
               <div className={`text-lg font-bold ${isT && !isSelected ? 'text-[#25D366]' : ''}`}>{d.getDate()}</div>
               {closed && !isSelected && <div className="text-xs text-gray-300">Fechado</div>}
