@@ -110,7 +110,7 @@ export function LandingPage() {
             Seus clientes já existem.<br /><span className="text-[#25D366]">Eles só pararam de voltar.</span>
           </h1>
           <p className="text-xl text-white/90 max-w-[680px] mx-auto mb-4 [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]">
-            O Retorna envia mensagens personalizadas pelo WhatsApp para reativar clientes inativos — e mostra exatamente quanto faturamento cada um gerou quando voltou.
+            O Retorna envia mensagens personalizadas pelo WhatsApp para reativar clientes inativos e mostra exatamente quanto faturamento cada um gerou quando voltou.
           </p>
           <p className="text-base text-white/70 mb-10 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]">Sem anúncios. Sem complicação. Só clientes voltando.</p>
           <button onClick={() => navigate('/comecar')} className="inline-flex items-center gap-2.5 bg-[#25D366] text-white text-lg font-bold py-4 px-10 rounded-full hover:bg-[#1DA851] hover:-translate-y-0.5 transition-all cursor-pointer border-none shadow-lg shadow-green-900/30">
