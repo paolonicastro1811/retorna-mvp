@@ -207,7 +207,7 @@ export function LandingPage() {
               playsInline
               className="w-full rounded-2xl"
               poster="/images/poster-video.png"
-              style={{aspectRatio: '16/9'}}
+              style={{aspectRatio: '16/9', backgroundImage: 'url(/images/poster-video.png)', backgroundSize: 'cover', backgroundPosition: 'center'}}
             >
               <source src="/images/d2e1ae58e7fb4654ac7f37923a0f7983.mp4" type="video/mp4" />
             </video>
