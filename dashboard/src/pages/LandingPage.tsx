@@ -203,7 +203,7 @@ export function LandingPage() {
           <p className="text-white/60 mb-10 text-lg">Assista e veja como o Retorna traz seus clientes de volta.</p>
           <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 mx-auto" style={{maxWidth: '780px'}}>
             <img
-              src="/images/poster-video.png"
+              src="https://retornabrasil.com/images/poster-video.png"
               alt="Descubra como funciona o Retorna"
               className="w-full rounded-2xl block"
               style={{aspectRatio: '16/9', objectFit: 'cover', cursor: 'pointer'}}
