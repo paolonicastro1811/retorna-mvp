@@ -206,7 +206,7 @@ export function LandingPage() {
               controls
               playsInline
               className="w-full rounded-2xl"
-              poster="/images/Senza titolo.jpg"
+              poster="/images/poster-video.png"
               style={{aspectRatio: '16/9'}}
             >
               <source src="/images/d2e1ae58e7fb4654ac7f37923a0f7983.mp4" type="video/mp4" />
