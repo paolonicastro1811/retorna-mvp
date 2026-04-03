@@ -127,7 +127,7 @@ export function LandingPage() {
         <div className="max-w-[1320px] mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
             <StatCard value="18%" label="Taxa média de retorno" />
-            <StatCard value="3 dias" label="Para ver primeiros resultados" />
+            <StatCard value="7 dias" label="Para ver primeiros resultados" />
             <StatCard value="R$ 2.350" label="Faturamento médio por campanha" />
             <StatCard value="100%" label="Conforme LGPD e WhatsApp" />
           </div>
