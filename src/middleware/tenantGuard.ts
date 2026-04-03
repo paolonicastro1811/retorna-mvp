@@ -12,8 +12,20 @@ export function tenantGuard(req: Request, res: Response, next: NextFunction) {
   // Check both :restaurantId and :id (some routes use :id for the restaurant)
   const paramRestaurantId = req.params.restaurantId || req.params.id;
 
-  // If the route doesn't have a restaurant param, skip (nothing to guard)
-  if (!paramRestaurantId) return next();
+  // If the route doesn't have a restaurant param in the URL, skip tenant
+  // comparison. These routes (e.g. /billing/*) derive restaurantId from the
+  // JWT inside their handlers, so there is no URL param to validate here.
+  // SECURITY NOTE: Any new route that embeds a resource ID in the URL MUST
+  // either include :restaurantId or implement its own ownership check.
+  if (!paramRestaurantId) {
+    const user = (req as any).user;
+    if (user) {
+      console.debug(
+        `[TenantGuard] Route ${req.method} ${req.originalUrl} has no :restaurantId param — relying on handler-level tenant check (user=${user.userId})`
+      );
+    }
+    return next();
+  }
 
   const user = (req as any).user;
 

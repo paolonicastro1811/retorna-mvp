@@ -213,6 +213,16 @@ stripeWebhookRouter.post(
           where: { stripeSubscriptionId: subscription.id },
         });
         if (restaurant) {
+          // Security: cross-check Stripe customer metadata against DB record
+          const customer = await stripe.customers.retrieve(subscription.customer as string);
+          if (!customer.deleted && (customer as Stripe.Customer).metadata?.restaurantId !== restaurant.id) {
+            console.error(
+              `[Stripe] SECURITY: subscription ${subscription.id} customer metadata restaurantId ` +
+              `(${(customer as Stripe.Customer).metadata?.restaurantId}) does not match DB record (${restaurant.id}) — skipping`
+            );
+            break;
+          }
+
           let status = "active";
           if (subscription.status === "past_due") status = "past_due";
           if (subscription.status === "canceled") status = "canceled";
@@ -236,6 +246,16 @@ stripeWebhookRouter.post(
           where: { stripeSubscriptionId: subscription.id },
         });
         if (restaurant) {
+          // Security: cross-check Stripe customer metadata against DB record
+          const customer = await stripe.customers.retrieve(subscription.customer as string);
+          if (!customer.deleted && (customer as Stripe.Customer).metadata?.restaurantId !== restaurant.id) {
+            console.error(
+              `[Stripe] SECURITY: subscription ${subscription.id} customer metadata restaurantId ` +
+              `(${(customer as Stripe.Customer).metadata?.restaurantId}) does not match DB record (${restaurant.id}) — skipping`
+            );
+            break;
+          }
+
           await prisma.restaurant.update({
             where: { id: restaurant.id },
             data: { subscriptionStatus: "expired" },
@@ -253,6 +273,19 @@ stripeWebhookRouter.post(
             where: { stripeSubscriptionId: invoiceSub },
           });
           if (restaurant) {
+            // Security: cross-check Stripe customer metadata against DB record
+            const invoiceCustomerId = (invoice as any).customer as string | null;
+            if (invoiceCustomerId) {
+              const customer = await stripe.customers.retrieve(invoiceCustomerId);
+              if (!customer.deleted && (customer as Stripe.Customer).metadata?.restaurantId !== restaurant.id) {
+                console.error(
+                  `[Stripe] SECURITY: invoice subscription ${invoiceSub} customer metadata restaurantId ` +
+                  `(${(customer as Stripe.Customer).metadata?.restaurantId}) does not match DB record (${restaurant.id}) — skipping`
+                );
+                break;
+              }
+            }
+
             await prisma.restaurant.update({
               where: { id: restaurant.id },
               data: { subscriptionStatus: "past_due" },
