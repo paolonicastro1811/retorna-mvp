@@ -69,11 +69,27 @@ export function AutomacoesPage() {
     </div>
   )
 
-  if (!data) return (
-    <div className="text-center py-20 text-red-500">Erro ao carregar dados</div>
-  )
+  // ── DEMO DATA (remove after design review) ──
+  const demoData: AutomationKpis = {
+    kpis: { totalSent: 47, totalReturned: 14, returnRate: 30, totalRevenue: 2840, roiPerMessage: 60, failedCount: 1 },
+    templateBreakdown: [],
+    recentReturns: [
+      { customerName: 'João Silva', customerPhone: '+5511999001122', templateKey: 'reactivation', messageSentAt: '2026-03-28T10:00:00Z', visitAt: '2026-03-30T19:30:00Z', daysToReturn: 2, revenue: 185, tableNumber: 4, tableLabel: null },
+      { customerName: 'Maria Oliveira', customerPhone: '+5511988776655', templateKey: 'post_visit_thanks', messageSentAt: '2026-03-29T13:00:00Z', visitAt: '2026-04-01T20:00:00Z', daysToReturn: 3, revenue: 220, tableNumber: 7, tableLabel: null },
+      { customerName: 'Carlos Santos', customerPhone: '+5511977665544', templateKey: 'surprise_discount', messageSentAt: '2026-03-25T17:00:00Z', visitAt: '2026-03-27T12:30:00Z', daysToReturn: 2, revenue: 310, tableNumber: 2, tableLabel: null },
+      { customerName: 'Ana Costa', customerPhone: '+5511966554433', templateKey: 'milestone_halfway', messageSentAt: '2026-03-20T13:00:00Z', visitAt: '2026-03-24T19:00:00Z', daysToReturn: 4, revenue: 150, tableNumber: null, tableLabel: null },
+      { customerName: 'Pedro Almeida', customerPhone: '+5511955443322', templateKey: 'reward_earned', messageSentAt: '2026-03-22T13:00:00Z', visitAt: '2026-03-23T20:30:00Z', daysToReturn: 1, revenue: 420, tableNumber: 12, tableLabel: null },
+      { customerName: 'Fernanda Lima', customerPhone: '+5511944332211', templateKey: 'reactivation', messageSentAt: '2026-03-18T10:00:00Z', visitAt: '2026-03-22T13:00:00Z', daysToReturn: 4, revenue: 275, tableNumber: 5, tableLabel: null },
+      { customerName: 'Lucas Rocha', customerPhone: '+5511933221100', templateKey: 'post_visit_thanks', messageSentAt: '2026-03-30T13:00:00Z', visitAt: '2026-04-02T19:45:00Z', daysToReturn: 3, revenue: 190, tableNumber: 9, tableLabel: null },
+      { customerName: 'Juliana Pereira', customerPhone: '+5511922110099', templateKey: 'surprise_discount', messageSentAt: '2026-03-15T17:00:00Z', visitAt: '2026-03-17T21:00:00Z', daysToReturn: 2, revenue: 340, tableNumber: 1, tableLabel: null },
+      { customerName: 'Roberto Mendes', customerPhone: '+5511911009988', templateKey: 'reactivation', messageSentAt: '2026-03-10T10:00:00Z', visitAt: '2026-03-15T20:00:00Z', daysToReturn: 5, revenue: 160, tableNumber: 8, tableLabel: null },
+      { customerName: 'Camila Souza', customerPhone: '+5511900998877', templateKey: 'loyalty_vip', messageSentAt: '2026-03-27T13:00:00Z', visitAt: '2026-03-28T19:30:00Z', daysToReturn: 1, revenue: 590, tableNumber: 3, tableLabel: null },
+    ],
+    tierDistribution: [],
+  }
+  const effective = data?.kpis?.totalSent ? data : demoData
 
-  const { kpis, recentReturns } = data
+  const { kpis, recentReturns } = effective
   const hasActivity = kpis.totalSent > 0
   const periodLabel = PERIOD_OPTIONS.find(p => p.days === days)?.label ?? `${days} dias`
 
