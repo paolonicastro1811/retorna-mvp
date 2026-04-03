@@ -33,12 +33,12 @@ interface AutomationKpis {
 }
 
 const TEMPLATE_LABELS: Record<string, string> = {
-  post_visit_consent: 'Pos-visita',
-  post_visit_thanks: 'Pos-visita',
+  post_visit_consent: 'Pós-visita',
+  post_visit_thanks: 'Pós-visita',
   reward_earned: 'Recompensa',
   surprise_discount: 'Desconto surpresa',
   milestone_halfway: 'Metade do caminho',
-  reactivation: 'Reativacao',
+  reactivation: 'Reativação',
   loyalty_vip: 'Cliente VIP',
 }
 
@@ -127,7 +127,7 @@ export function AutomacoesPage() {
     setLoading(true)
     Promise.all([
       api<AutomationKpis>(`/restaurants/${restaurantId}/automation-stats?days=${days}`).catch(() => null),
-      getCustomers(restaurantId),
+      getCustomers(restaurantId).catch(() => [] as Customer[]),
       api<{ timezone: string }>(`/restaurants/${restaurantId}`).catch(() => null),
     ]).then(([kpi, custs, rest]) => {
       setKpiData(kpi)
@@ -255,7 +255,7 @@ export function AutomacoesPage() {
         </div>
         <div className="bg-[#1a1a2e] rounded-xl p-3 text-center">
           <p className="text-2xl font-extrabold text-white">{fmtCurrency(avgTicket)}</p>
-          <p className="text-xs text-gray-400">Ticket medio</p>
+          <p className="text-xs text-gray-400">Ticket médio</p>
         </div>
       </div>
 
@@ -281,10 +281,10 @@ export function AutomacoesPage() {
                   <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-4 py-2 font-medium">Telefone</th>
                   <th className="px-4 py-2 font-medium text-center">Visitas</th>
-                  <th className="px-4 py-2 font-medium text-center">Ultima visita</th>
-                  <th className="px-4 py-2 font-medium text-right">Gasto ult. visita</th>
+                  <th className="px-4 py-2 font-medium text-center">Última visita</th>
+                  <th className="px-4 py-2 font-medium text-right">Gasto últ. visita</th>
                   <th className="px-4 py-2 font-medium text-right">Gasto total</th>
-                  <th className="px-4 py-2 font-medium text-center">Acao</th>
+                  <th className="px-4 py-2 font-medium text-center">Ação</th>
                 </tr>
               </thead>
               <tbody>

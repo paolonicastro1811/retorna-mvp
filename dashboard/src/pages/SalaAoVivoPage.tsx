@@ -12,8 +12,8 @@ const STATUS_COLORS: Record<string, string> = {
 }
 const STATUS_LABELS: Record<string, string> = {
   confirmed: 'Confirmada',
-  seated: 'Sentado',
-  completed: 'Concluida',
+  seated: 'Acomodado',
+  completed: 'Concluída',
   pending: 'Pendente',
 }
 

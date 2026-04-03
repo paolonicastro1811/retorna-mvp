@@ -146,8 +146,8 @@ router.patch(
     try {
       const customerId = param(req, "customerId");
       const { amount } = req.body;
-      if (amount == null || typeof amount !== "number" || amount < 0) {
-        return res.status(400).json({ error: "amount must be a non-negative number" });
+      if (amount == null || typeof amount !== "number" || isNaN(amount) || !isFinite(amount) || amount < 0 || amount > 999999) {
+        return res.status(400).json({ error: "amount must be a valid non-negative number up to 999999" });
       }
       const customer = await customerRepository.findById(customerId);
       if (!customer || customer.restaurantId !== param(req, "restaurantId")) {

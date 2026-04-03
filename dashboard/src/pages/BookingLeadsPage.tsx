@@ -22,10 +22,10 @@ interface Reservation {
 const STATUS_MAP: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   pending:   { label: 'Pendente',   bg: 'bg-amber-50',  text: 'text-amber-700',  dot: 'bg-amber-400' },
   confirmed: { label: 'Confirmada', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-400' },
-  seated:    { label: 'Sentado',    bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-400' },
-  completed: { label: 'Concluida',  bg: 'bg-gray-50',   text: 'text-gray-500',   dot: 'bg-gray-400' },
+  seated:    { label: 'Acomodado',  bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-400' },
+  completed: { label: 'Concluída',  bg: 'bg-gray-50',   text: 'text-gray-500',   dot: 'bg-gray-400' },
   cancelled: { label: 'Cancelada',  bg: 'bg-red-50',    text: 'text-red-600',    dot: 'bg-red-400' },
-  no_show:   { label: 'Nao compareceu', bg: 'bg-red-50', text: 'text-red-500', dot: 'bg-red-300' },
+  no_show:   { label: 'Não compareceu', bg: 'bg-red-50', text: 'text-red-500', dot: 'bg-red-300' },
 }
 
 const DAY_NAMES_PT = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
@@ -414,7 +414,7 @@ export function BookingLeadsPage() {
                     <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
                   </div>
 
-                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Horarios do dia</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Horários do dia</p>
 
                   <div className="space-y-1">
                     {timeSlots.map(slot => {

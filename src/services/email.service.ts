@@ -47,8 +47,8 @@ export async function sendMagicLinkEmail(
     <div style="padding:32px">
       <p style="color:#2d2d3a;font-size:16px;margin:0 0 8px">Oi! 👋</p>
       <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0 0 24px">
-        Alguem solicitou um link de acesso ao painel de <strong>${name}</strong>.
-        Clique no botao abaixo para entrar:
+        Alguém solicitou um link de acesso ao painel de <strong>${name}</strong>.
+        Clique no botão abaixo para entrar:
       </p>
 
       <div style="text-align:center;margin:32px 0">
@@ -59,10 +59,10 @@ export async function sendMagicLinkEmail(
       </div>
 
       <p style="color:#9ca3af;font-size:12px;line-height:1.5;margin:0 0 8px">
-        Este link expira em <strong>15 minutos</strong> e so pode ser usado uma vez.
+        Este link expira em <strong>15 minutos</strong> e só pode ser usado uma vez.
       </p>
       <p style="color:#9ca3af;font-size:12px;line-height:1.5;margin:0">
-        Se voce nao solicitou este acesso, ignore este email.
+        Se você não solicitou este acesso, ignore este email.
       </p>
 
       <hr style="border:none;border-top:1px solid #f0f0f0;margin:24px 0" />
