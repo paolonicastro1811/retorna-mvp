@@ -10,9 +10,16 @@
         { "key": "Content-Type", "value": "video/mp4" },
         { "key": "Cache-Control", "value": "public, max-age=86400" }
       ]
+    },
+    {
+      "source": "/images/(.*).png",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" },
+        { "key": "Content-Type", "value": "image/png" }
+      ]
     }
   ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!images/).*)", "destination": "/index.html" }
   ]
 }
