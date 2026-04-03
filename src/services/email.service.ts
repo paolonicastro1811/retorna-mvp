@@ -99,3 +99,71 @@ export async function sendMagicLinkEmail(
 
   console.log(`[Email] Magic link enviado para ${to}`);
 }
+
+export async function sendTrialWarningEmail(
+  to: string,
+  restaurantName: string,
+  daysRemaining: number
+): Promise<void> {
+  const name = restaurantName || "seu restaurante";
+
+  if (!resend) {
+    console.log(`\n${"=".repeat(60)}`);
+    console.log(`[Trial Warning] Email para: ${to}`);
+    console.log(`[Trial Warning] ${daysRemaining} dias restantes para "${name}"`);
+    console.log(`${"=".repeat(60)}\n`);
+    return;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8f9fb">
+  <div style="max-width:480px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+
+    <div style="background:#1a1a2e;padding:24px 32px;text-align:center">
+      <h1 style="color:#25D366;font-size:20px;margin:0">Retorna</h1>
+    </div>
+
+    <div style="padding:32px">
+      <p style="color:#2d2d3a;font-size:16px;margin:0 0 8px">Oi! 👋</p>
+      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0 0 16px">
+        O periodo de teste gratuito de <strong>${name}</strong> expira em <strong>${daysRemaining} dia${daysRemaining > 1 ? 's' : ''}</strong>.
+      </p>
+      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0 0 24px">
+        Para continuar usando todas as funcionalidades — mensagens automaticas, fidelidade, reservas e mais — assine um plano antes que o teste termine.
+      </p>
+
+      <div style="text-align:center;margin:32px 0">
+        <a href="${APP_URL}/painel"
+           style="display:inline-block;background:#25D366;color:#fff;font-size:16px;font-weight:700;padding:14px 40px;border-radius:50px;text-decoration:none">
+          Assinar agora
+        </a>
+      </div>
+
+      <p style="color:#9ca3af;font-size:12px;line-height:1.5;margin:0">
+        Se tiver duvidas, responda este email. Estamos aqui para ajudar!
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const { error } = await resend.emails.send({
+    from: EMAIL_FROM,
+    to,
+    subject: `Seu teste gratuito expira em ${daysRemaining} dia${daysRemaining > 1 ? 's' : ''} — ${name}`,
+    html,
+  });
+
+  if (error) {
+    console.error(`[Email] Erro ao enviar trial warning para ${to}:`, error);
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(`Falha ao enviar email: ${error.message}`);
+    }
+    return;
+  }
+
+  console.log(`[Email] Trial warning enviado para ${to} (${daysRemaining}d restantes)`);
+}

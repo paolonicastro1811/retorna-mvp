@@ -152,6 +152,15 @@ export function SettingsPage() {
   // Plan change
   const [changingPlan, setChangingPlan] = useState(false)
 
+  // Billing / Trial
+  const [billingStatus, setBillingStatus] = useState<{
+    subscriptionStatus: string
+    trialEndsAt: string | null
+    trialDaysRemaining: number
+    isActive: boolean
+    hasSubscription: boolean
+  } | null>(null)
+
   useEffect(() => {
     if (!restaurantId) return
     Promise.all([
@@ -159,7 +168,8 @@ export function SettingsPage() {
       api<Hour[]>(`/restaurants/${restaurantId}/hours`),
       api<MessageTemplate[]>(`/restaurants/${restaurantId}/templates`),
       api<CampaignLimits>(`/restaurants/${restaurantId}/campaign-limits`).catch(() => null),
-    ]).then(([r, h, tpls, lim]) => {
+      api<any>(`/billing/status`).catch(() => null),
+    ]).then(([r, h, tpls, lim, billing]) => {
       setRestaurant(r)
       setName(r.name)
       setPhone(r.phone ?? '')
@@ -169,6 +179,7 @@ export function SettingsPage() {
       setHours(h)
       setTemplates(tpls)
       if (lim) setCustomLimits(lim)
+      if (billing) setBillingStatus(billing)
       const hourMap = new Map(h.map(hr => [hr.dayOfWeek, hr]))
       setEditHours(Array.from({ length: 7 }, (_, i) => {
         const hr = hourMap.get(i)
@@ -909,6 +920,89 @@ export function SettingsPage() {
       {/* ── TAB 5: Plano e Preços ── */}
       {activeTab === 5 && (
       <section>
+        {/* Trial / Subscription status banner */}
+        {billingStatus && (
+          <div className={`rounded-xl border p-4 mb-4 ${
+            billingStatus.subscriptionStatus === 'active'
+              ? 'bg-green-50 border-green-200'
+              : billingStatus.trialDaysRemaining > 7
+                ? 'bg-blue-50 border-blue-200'
+                : billingStatus.trialDaysRemaining > 0
+                  ? 'bg-yellow-50 border-yellow-200'
+                  : 'bg-red-50 border-red-200'
+          }`}>
+            {billingStatus.subscriptionStatus === 'active' ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-green-800">Assinatura ativa</p>
+                  <p className="text-sm text-green-600">Seu plano está ativo e funcionando normalmente.</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const { url } = await api<{ url: string }>('/billing/portal', { method: 'POST' })
+                      window.location.href = url
+                    } catch (e) { console.error(e) }
+                  }}
+                  className="text-sm bg-white border border-green-300 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors font-medium">
+                  Gerenciar assinatura
+                </button>
+              </div>
+            ) : billingStatus.trialDaysRemaining > 0 ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`font-semibold ${billingStatus.trialDaysRemaining > 7 ? 'text-blue-800' : 'text-yellow-800'}`}>
+                    Periodo de teste gratuito
+                  </p>
+                  <p className={`text-sm ${billingStatus.trialDaysRemaining > 7 ? 'text-blue-600' : 'text-yellow-600'}`}>
+                    {billingStatus.trialDaysRemaining === 1
+                      ? 'Ultimo dia de teste! Assine para continuar usando.'
+                      : `Faltam ${billingStatus.trialDaysRemaining} dias para o fim do periodo de teste.`}
+                    {billingStatus.trialEndsAt && (
+                      <span className="ml-1">
+                        (expira em {new Date(billingStatus.trialEndsAt).toLocaleDateString('pt-BR')})
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const { url } = await api<{ url: string }>('/billing/checkout', {
+                        method: 'POST',
+                        body: JSON.stringify({ billingCycle: 'monthly' }),
+                      })
+                      window.location.href = url
+                    } catch (e) { console.error(e) }
+                  }}
+                  className="text-sm bg-[#25D366] text-white px-4 py-1.5 rounded-lg hover:bg-[#1DA851] transition-colors font-semibold whitespace-nowrap">
+                  Assinar agora
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-red-800">Periodo de teste expirado</p>
+                  <p className="text-sm text-red-600">Assine um plano para continuar usando a plataforma.</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const { url } = await api<{ url: string }>('/billing/checkout', {
+                        method: 'POST',
+                        body: JSON.stringify({ billingCycle: 'monthly' }),
+                      })
+                      window.location.href = url
+                    } catch (e) { console.error(e) }
+                  }}
+                  className="text-sm bg-red-600 text-white px-4 py-1.5 rounded-lg hover:bg-red-700 transition-colors font-semibold whitespace-nowrap">
+                  Assinar agora
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           {PLANS.map(plan => {
             const isCurrentPlan = restaurant.plan === plan.key

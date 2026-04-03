@@ -21,6 +21,7 @@ import { runPostVisitConsent } from "./jobs/postVisitConsent.job";
 import { runDailyAutomation } from "./services/loyalty.service";
 import { runSurpriseDiscount } from "./jobs/surpriseDiscount.job";
 import { pollMetaTemplateStatuses } from "./services/metaTemplate.service";
+import { sendTrialWarningEmail } from "./services/email.service";
 import { liveStatsRouter } from "./routes/liveStats.routes";
 import whatsappConnectRouter from "./routes/whatsapp-connect.routes";
 import { prisma } from "./database/client";
@@ -301,6 +302,54 @@ cron.schedule("*/30 * * * *", async () => {
     }
   } catch (err) {
     console.error("[Cron:MetaTemplatePoll] Error:", err);
+  }
+});
+
+// Trial warning email: every day at 12:00 UTC = 9:00 Brasília
+// Sends email 7 days and 3 days before trial expires
+cron.schedule("0 12 * * *", async () => {
+  try {
+    const restaurants = await prisma.restaurant.findMany({
+      where: {
+        subscriptionStatus: "trialing",
+        trialStartDate: { not: null },
+      },
+      select: {
+        id: true,
+        name: true,
+        trialStartDate: true,
+        trialDays: true,
+        timezone: true,
+        users: { select: { email: true }, take: 1 },
+      },
+    });
+
+    let sent = 0;
+    for (const r of restaurants) {
+      if (!r.trialStartDate || !r.users[0]?.email) continue;
+
+      const trialEnd = new Date(r.trialStartDate);
+      trialEnd.setDate(trialEnd.getDate() + r.trialDays);
+
+      const tz = r.timezone || "America/Sao_Paulo";
+      const nowInTz = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+      const daysRemaining = Math.ceil((trialEnd.getTime() - nowInTz.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Send at 7 days and 3 days before expiry
+      if (daysRemaining === 7 || daysRemaining === 3) {
+        try {
+          await sendTrialWarningEmail(r.users[0].email, r.name, daysRemaining);
+          sent++;
+        } catch (err) {
+          console.error(`[Cron:TrialWarning] Error sending to ${r.users[0].email}:`, err);
+        }
+      }
+    }
+    if (sent > 0) {
+      console.log(`[Cron:TrialWarning] ${sent} warning email(s) sent`);
+    }
+  } catch (err) {
+    console.error("[Cron:TrialWarning] Error:", err);
   }
 });
 
