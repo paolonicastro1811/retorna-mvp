@@ -201,14 +201,34 @@ export function LandingPage() {
             Em menos de 2 minutos você entende tudo
           </h2>
           <p className="text-white/60 mb-10 text-lg">Assista e veja como o Retorna traz seus clientes de volta.</p>
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 mx-auto" style={{maxWidth: '780px'}}>
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/50 mx-auto" style={{maxWidth: '780px', position: 'relative'}}>
+            {/* Poster visibile finché non si preme play */}
+            <img
+              src="/images/poster-video.png"
+              alt="Descubra como funciona o Retorna"
+              className="w-full rounded-2xl block"
+              style={{aspectRatio: '16/9', objectFit: 'cover', cursor: 'pointer', display: 'block'}}
+              onClick={(e) => {
+                const container = e.currentTarget.parentElement;
+                if (!container) return;
+                e.currentTarget.style.display = 'none';
+                const vid = container.querySelector('video');
+                if (vid) { vid.style.display = 'block'; vid.play(); }
+              }}
+            />
+            {/* Icona play centrata */}
+            <div
+              style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '80px', height: '80px', background: 'rgba(0,0,0,0.65)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', pointerEvents: 'none', zIndex: 2}}
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+            {/* Video nascosto — appare solo dopo click */}
             <video
               controls
               playsInline
               preload="none"
               className="w-full rounded-2xl block"
-              poster="/images/poster-video.png"
-              style={{aspectRatio: '16/9'}}
+              style={{aspectRatio: '16/9', display: 'none'}}
             >
               <source src="/images/d2e1ae58e7fb4654ac7f37923a0f7983.mp4" type="video/mp4" />
             </video>
