@@ -35,7 +35,7 @@ const STATUS_BADGES: Record<string, { label: string; color: string }> = {
   draft: { label: 'Rascunho', color: 'bg-gray-100 text-gray-700' },
   ai_review: { label: 'Revisão AI', color: 'bg-blue-100 text-blue-700' },
   ai_rejected: { label: 'Rejeitado (AI)', color: 'bg-red-100 text-red-700' },
-  submitted: { label: 'Em revisao Meta', color: 'bg-yellow-100 text-yellow-700' },
+  submitted: { label: 'Em revisão Meta', color: 'bg-yellow-100 text-yellow-700' },
   approved: { label: 'Aprovado', color: 'bg-green-100 text-green-700' },
   rejected: { label: 'Rejeitado (Meta)', color: 'bg-red-100 text-red-700' },
 }
@@ -105,7 +105,7 @@ export function CustomTemplatesPage() {
         method: 'POST',
         body: JSON.stringify({ name, body }),
       })
-      setSuccess('Template criado! Agora envie para Meta para aprovacao.')
+      setSuccess('Template criado! Agora envie para Meta para aprovação.')
       setName('')
       setBody('')
       setAiReview(null)
@@ -125,7 +125,7 @@ export function CustomTemplatesPage() {
       await api(`/restaurants/${restaurantId}/templates/${templateId}/submit-to-meta`, {
         method: 'POST',
       })
-      setSuccess('Template enviado para revisao da Meta!')
+      setSuccess('Template enviado para revisão da Meta!')
       loadData()
     } catch (err: any) {
       setError(err.message)
@@ -156,7 +156,7 @@ export function CustomTemplatesPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold text-gray-900">Templates Custom</h1>
       <p className="text-lg text-gray-500">
-        Crie mensagens personalizadas para suas campanhas. Cada template passa por revisao de AI e aprovacao da Meta.
+        Crie mensagens personalizadas para suas campanhas. Cada template passa por revisão de AI e aprovação da Meta.
       </p>
 
       {/* Campaign limits info */}
@@ -206,7 +206,7 @@ export function CustomTemplatesPage() {
           <textarea
             value={body}
             onChange={e => setBody(e.target.value)}
-            placeholder="Oi {{customer_name}}! Temos uma novidade especial para voce..."
+            placeholder="Oi {{customer_name}}! Temos uma novidade especial para você..."
             rows={5}
             className="w-full border rounded-lg px-3 py-2 text-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
@@ -322,7 +322,7 @@ export function CustomTemplatesPage() {
                   </button>
                 )}
                 {t.metaStatus === 'submitted' && (
-                  <span className="text-base text-yellow-600">Aguardando aprovacao da Meta (pode levar ate 24h)...</span>
+                  <span className="text-base text-yellow-600">Aguardando aprovação da Meta (pode levar até 24h)...</span>
                 )}
                 {t.metaStatus === 'approved' && (
                   <span className="text-base text-green-600">Pronto para usar em campanhas!</span>

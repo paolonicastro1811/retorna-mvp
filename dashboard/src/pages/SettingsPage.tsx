@@ -919,7 +919,7 @@ export function SettingsPage() {
 
             <button onClick={handleSaveHours} disabled={savingHours}
               className="w-full mt-3 bg-[#25D366] text-white py-2 rounded-lg font-semibold text-base hover:bg-[#1DA851] disabled:opacity-50 transition-colors">
-              {savingHours ? 'Salvando...' : 'Salvar horarios'}
+              {savingHours ? 'Salvando...' : 'Salvar horários'}
             </button>
             {savedHours && <div className="mt-2 bg-green-50 border border-green-200 text-green-800 rounded-lg p-2 text-sm">Horários salvos!</div>}
           </div>

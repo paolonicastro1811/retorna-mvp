@@ -265,7 +265,7 @@ export const bookingService = {
     if (!slot || slot.available <= 0) {
       // Find nearest available slot
       const nearest = availability.slots.find((s) => s.available > 0 && s.time >= booking.time!);
-      const suggestion = nearest ? ` Proximo horario disponivel: ${nearest.time}` : "";
+      const suggestion = nearest ? ` Próximo horário disponível: ${nearest.time}` : "";
       return { success: false, error: `Sem disponibilidade para ${booking.time}.${suggestion}` };
     }
 

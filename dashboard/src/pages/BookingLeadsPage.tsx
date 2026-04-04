@@ -541,7 +541,7 @@ export function BookingLeadsPage() {
                   </div>
 
                   {timeSlots.length === 0 && (
-                    <p className="text-base text-gray-400 text-center py-4">Nenhum horario configurado para este dia</p>
+                    <p className="text-base text-gray-400 text-center py-4">Nenhum horário configurado para este dia</p>
                   )}
                 </div>
               )

@@ -277,7 +277,7 @@ export default function WhatsAppConnectPage() {
             </span>
             <div>
               <p className="text-sm font-medium text-gray-800">
-                Clique no botao abaixo
+                Clique no botão abaixo
               </p>
               <p className="text-xs text-gray-500">
                 Uma janela do Facebook ira abrir

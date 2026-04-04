@@ -40,7 +40,7 @@ export async function checkCampaignLimits(restaurantId: string): Promise<LimitCh
   if (hour < 9 || hour >= 20) {
     return {
       allowed: false,
-      reason: `Fora do horario de envio (9h-20h). Horario atual: ${hour}h. Agende para amanha.`,
+      reason: `Fora do horário de envio (9h-20h). Horário atual: ${hour}h. Agende para amanhã.`,
     };
   }
 
